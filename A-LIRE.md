@@ -81,3 +81,19 @@ https://claude.ai/artifact/5eHy4rUEf34gA143JSVyjW
 - `js/app.js` : état local, routeur, vues, moteur d'expériences.
 - `assets/` : favicon (16, 32, 48 px) et icônes 180 et 512 px dans la palette braise,
   générés par `../_scripts/gen_icones_braise.py`. Planche de contrôle : `_controle-icones.png`.
+
+## Application installable (PWA)
+
+Ajoutée le 4 octobre 2026. Le prototype public est sur GitHub Pages
+(https://yanntassouainfo-pixel.github.io/besoin-alchimie/, dépôt public
+`yanntassouainfo-pixel/besoin-alchimie`, publié par Yann).
+
+- `manifest.webmanifest` : nom, couleurs, icônes 192, 512 et masquable.
+- `sw.js` : réseau d'abord pour la page, cache d'abord pour le reste, ouverture hors
+  connexion. **Changer `VERSION` et les `?v=` à chaque mise en ligne** qui touche le CSS
+  ou le JS, sinon les téléphones gardent l'ancienne version.
+- Profil : encart « Sur votre écran d'accueil » (bouton sur Android et ordinateur,
+  explication Safari sur iPhone), masqué dans l'Artifact.
+- Testé le 4/10 dans Chrome piloté : service worker actif, 10 fichiers en cache,
+  aucune erreur d'installabilité, ouverture hors connexion. Pas testé sur un vrai
+  téléphone.

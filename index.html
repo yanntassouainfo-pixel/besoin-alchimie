@@ -10,10 +10,15 @@
 <link rel="icon" href="assets/favicon-braise.ico" sizes="16x16 32x32 48x48" />
 <link rel="icon" href="assets/icone-braise-512.png" type="image/png" sizes="512x512" />
 <link rel="apple-touch-icon" href="assets/icone-braise-180.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Alchimie" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/app.css?v=3" />
+<link rel="stylesheet" href="css/app.css?v=4" />
 </head>
 <body>
 
@@ -43,7 +48,13 @@
 
 <div id="voile" class="voile" hidden></div>
 
-<script src="js/data.js?v=2"></script>
-<script src="js/app.js?v=3"></script>
+<script src="js/data.js?v=4"></script>
+<script src="js/app.js?v=4"></script>
+<script>
+  /* Application installable : le service worker ne s'enregistre qu'en HTTPS (ou en local). */
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+</script>
 </body>
 </html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Besoin d'Alchimie, trois typographies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Jost:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400..700;1,400..700&family=Figtree:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* Planche de comparaison : trois typographies sur la palette « Braise & néon » retenue.
+   Mêmes écrans, mêmes textes, mêmes couleurs : seule la typographie change. */
+:root {
+  --fond: #110A0D; --surf: #1D1015; --surf2: #29161D; --txt: #FFF1EA; --txt2: #F2D9CF; --mut: #B09398;
+  --ligne: rgba(255,241,234,0.10); --ligne2: rgba(255,241,234,0.22); --acc: #FF6B45; --encre: #1A0B10;
+  --degrade: linear-gradient(100deg, #FF5A36, #F0326F); --flamme: #FFB547; --fuchsia: #F64A82;
+  --halo: radial-gradient(120% 140% at 100% 0%, #E0216B 0%, #7A1235 38%, #1D1015 75%);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #070405; }
+body { color: var(--txt); }
+
+.dir { padding: 56px 56px 64px; width: 1320px; margin: 0 auto; background: var(--fond); position: relative; overflow: hidden; font-family: var(--corps); }
+.dir::before { content: ""; position: absolute; left: 30%; top: -300px; width: 900px; height: 600px; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,90,54,0.20), rgba(224,33,107,0.10) 40%, transparent 70%); }
+.dir + .dir { margin-top: 40px; }
+.dir__tete { display: grid; grid-template-columns: 1fr 500px; gap: 48px; align-items: end; margin-bottom: 40px; position: relative; z-index: 1; }
+.dir__lettre { font-family: var(--corps); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--acc); }
+.dir__nom { font-family: var(--disp); font-weight: var(--w-disp); font-stretch: var(--etire, 100%); letter-spacing: var(--ls-disp, 0); font-size: calc(5rem * var(--k, 1)); line-height: 0.95; margin-top: 10px; }
+.dir__nom i { font-style: var(--ital, italic); background: var(--degrade); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.dir__idee { font-size: 1.08rem; line-height: 1.55; color: var(--mut); margin-top: 16px; max-width: 54ch; }
+.specimen { display: grid; grid-template-columns: auto 1fr; gap: 10px 22px; align-items: center; padding: 22px 24px; border-radius: 18px; background: var(--surf); border: 1px solid var(--ligne); }
+.specimen .aa { font-family: var(--disp); font-weight: var(--w-disp); font-stretch: var(--etire, 100%); font-size: calc(6rem * var(--k, 1)); line-height: 0.9; grid-row: span 2; }
+.specimen .aa i { font-style: var(--ital, italic); color: var(--acc); }
+.specimen .nom { font-size: 0.82rem; color: var(--mut); line-height: 1.45; }
+.specimen .nom b { color: var(--txt); font-weight: 600; display: block; font-size: 0.95rem; }
+.specimen .ligne { grid-column: 1 / -1; font-family: var(--disp); font-weight: var(--w-disp); font-stretch: var(--etire, 100%); font-size: calc(1.9rem * var(--k, 1)); line-height: 1.1; border-top: 1px solid var(--ligne); padding-top: 14px; }
+.specimen .ligne i { font-style: var(--ital, italic); }
+.specimen .lecture { grid-column: 1 / -1; font-size: 0.92rem; line-height: 1.5; color: var(--txt2); }
+
+.telephones { display: grid; grid-template-columns: repeat(3, 360px); gap: 44px; justify-content: center; position: relative; z-index: 1; }
+.tel { width: 360px; height: 740px; border-radius: 44px; padding: 10px; background: #050404; box-shadow: 0 30px 80px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.08); }
+.ecran { width: 100%; height: 100%; border-radius: 36px; overflow: hidden; position: relative; background: var(--fond); color: var(--txt); display: flex; flex-direction: column; }
+.ecran::after { content: ""; position: absolute; right: -120px; top: -140px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(224,33,107,0.28), transparent 70%); pointer-events: none; }
+.legende { text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--mut); }
+.statut { height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font-size: 0.78rem; font-weight: 600; flex: none; }
+.corps { flex: 1; padding: 6px 20px 0; overflow: hidden; position: relative; z-index: 1; }
+.tab { height: 70px; flex: none; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--ligne); background: rgba(17,10,13,0.94); }
+.tab div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 0.64rem; font-weight: 600; color: var(--mut); }
+.tab div i { width: 20px; height: 20px; border-radius: 6px; border: 1.6px solid currentColor; }
+.tab div.on { color: var(--acc); }
+
+/* Tous les titres passent par les mêmes jetons : --disp, --w-disp, --k (correction de taille). */
+.d { font-family: var(--disp); font-weight: var(--w-disp); font-stretch: var(--etire, 100%); letter-spacing: var(--ls-disp, 0); }
+.sur { font-size: 0.66rem; font-weight: 600; letter-spacing: var(--ls-sur, 0.16em); text-transform: uppercase; color: var(--acc); }
+.h1 { font-size: calc(2.35rem * var(--k, 1)); line-height: 1; margin-top: 8px; }
+.p { font-size: 0.86rem; line-height: 1.45; color: var(--mut); margin-top: 10px; }
+.envies { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+.envie { min-height: 96px; border-radius: 14px; padding: 12px; display: flex; align-items: flex-end; font-size: calc(1.1rem * var(--k, 1)); line-height: 1.08; background: var(--surf); border: 1px solid var(--ligne); }
+.envie.fort { background: linear-gradient(150deg, #FF5A36, #F0326F); color: var(--encre); border-color: transparent; }
+.envie.b1 { border-bottom: 2px solid var(--acc); } .envie.b2 { border-bottom: 2px solid var(--fuchsia); } .envie.b3 { border-bottom: 2px solid var(--flamme); }
+.bandeau { margin-top: 14px; border-radius: 16px; padding: 16px; background: var(--halo); }
+.bandeau .sur { color: var(--flamme); }
+.bandeau .t { font-size: calc(1.45rem * var(--k, 1)); line-height: 1; margin-top: 6px; }
+.bandeau .bt { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: var(--txt); color: var(--encre); }
+.retour { font-size: 0.78rem; color: var(--mut); margin-bottom: 14px; }
+.fiche-h { font-size: calc(2.7rem * var(--k, 1)); line-height: 0.95; margin-top: 8px; }
+.accroche { font-style: var(--ital, italic); font-size: calc(1.2rem * var(--k, 1)); line-height: 1.15; color: var(--txt2); margin-top: 10px; }
+.meta { font-size: 0.78rem; color: var(--mut); margin-top: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--ligne); }
+.btn { display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 999px; font-weight: 600; font-size: 0.92rem; margin-top: 16px; background: var(--degrade); color: var(--encre); }
+.btn2 { display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 999px; font-weight: 600; font-size: 0.86rem; margin-top: 8px; border: 1px solid var(--ligne2); }
+.bloc-t { font-size: 0.66rem; font-weight: 600; letter-spacing: var(--ls-sur, 0.14em); text-transform: uppercase; color: var(--acc); margin-top: 18px; }
+.bloc-p { font-size: 0.86rem; line-height: 1.45; color: var(--txt2); margin-top: 6px; }
+.encart { margin-top: 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(240,50,111,0.5); background: var(--surf); font-size: 0.78rem; line-height: 1.4; color: var(--mut); }
+.encart b { display: block; color: var(--txt); font-weight: 600; margin-bottom: 2px; }
+.jeu-tete { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 10px; font-size: 0.8rem; color: var(--mut); }
+.jeu-tete .d { font-size: calc(0.98rem * var(--k, 1)); }
+.prog { height: 2px; background: var(--ligne); margin: 0 -20px 26px; }
+.prog i { display: block; height: 100%; width: 78%; background: var(--degrade); }
+.h2 { font-size: calc(2.3rem * var(--k, 1)); line-height: 1; margin-top: 10px; }
+.oui { list-style: none; margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.oui li { padding: 13px 14px; border-radius: 12px; background: var(--surf); font-size: calc(1.12rem * var(--k, 1)); line-height: 1.12; border-left: 3px solid var(--acc); }
+.oui li.peut { border-left-color: var(--flamme); }
+.oui li small { font-family: var(--corps); font-weight: 400; font-size: 0.7rem; color: var(--mut); display: block; margin-top: 4px; letter-spacing: 0; }
+.carte { margin-top: 14px; border-radius: 16px; padding: 16px; background: var(--surf); border: 1px solid var(--ligne); position: relative; }
+.carte::before { content: ""; position: absolute; left: 16px; top: 0; width: 36px; height: 3px; background: var(--fuchsia); border-radius: 0 0 3px 3px; }
+.carte .ter { font-size: 0.6rem; font-weight: 600; letter-spacing: var(--ls-sur, 0.14em); text-transform: uppercase; color: var(--fuchsia); }
+.carte .ti { font-size: calc(1.35rem * var(--k, 1)); margin-top: 6px; }
+.carte .ac { font-size: 0.8rem; color: var(--mut); margin-top: 4px; }
+.marque { width: 40px; height: 18px; }
+.marque path { fill: none; stroke: var(--acc); stroke-width: 2.4; stroke-linejoin: round; }
+
+/* ============ A : COUTURE (didone de magazine de mode) ============ */
+.A { --disp: "Bodoni Moda", "Didot", Georgia, serif; --corps: "Jost", "Futura", system-ui, sans-serif;
+     --w-disp: 500; --k: 0.94; --ls-disp: -0.015em; --ls-sur: 0.26em; font-variation-settings: "opsz" 48; }
+/* ============ B : MURMURE (garalde calligraphique, lettre d'amour) ============ */
+.B { --disp: "Cormorant Garamond", "Garamond", Georgia, serif; --corps: "Figtree", system-ui, sans-serif;
+     --w-disp: 500; --k: 1.12; --ls-disp: -0.005em; --ls-sur: 0.18em; }
+.B .accroche, .B .specimen .ligne i, .B .dir__nom i { font-weight: 500; }
+/* ============ C : NÉON (grotesque condensée d'affiche de nuit) ============ */
+.C { --disp: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif; --corps: "Hanken Grotesk", system-ui, sans-serif;
+     --w-disp: 700; --k: 0.9; --etire: 78%; --ls-disp: -0.02em; --ls-sur: 0.14em; --ital: normal; }
+.C .accroche { font-family: var(--corps); font-weight: 500; font-size: 1.02rem; line-height: 1.35; }
+.C .oui li, .C .carte .ti, .C .envie { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<template id="ecrans">
+  <div class="telephones">
+    <div>
+      <div class="tel"><div class="ecran">
+        <div class="statut"><span>21:04</span><svg class="marque" viewBox="0 0 64 28"><path d="M14 4 L26 24 L2 24 Z"/><path d="M38 4 L62 4 L50 24 Z"/></svg><span>●●●</span></div>
+        <div class="corps">
+          <div class="sur">Bonsoir, Awa et Komi</div>
+          <div class="h1 d">De quoi avez-vous envie tous les deux&nbsp;?</div>
+          <div class="envies">
+            <div class="envie d b1">On veut juste passer un bon moment</div>
+            <div class="envie d fort">On a envie de se sentir désirés</div>
+            <div class="envie d b2">On s’est un peu perdus dans le quotidien</div>
+            <div class="envie d b3">On a envie de tendresse</div>
+          </div>
+          <div class="bandeau"><div class="sur">Surprends-nous</div><div class="t d">Ce soir, on choisit pour vous.</div><span class="bt">Laisser choisir</span></div>
+        </div>
+        <div class="tab"><div class="on"><i></i>Accueil</div><div><i></i>Explorer</div><div><i></i>Surprends</div><div><i></i>Nous</div><div><i></i>Profil</div></div>
+      </div></div>
+      <p class="legende">Accueil</p>
+    </div>
+    <div>
+      <div class="tel"><div class="ecran">
+        <div class="statut"><span>21:06</span><span></span><span>●●●</span></div>
+        <div class="corps">
+          <div class="retour">← Se désirer</div>
+          <div class="sur">Se désirer · Expérience audio</div>
+          <div class="fiche-h d">Écoute-moi</div>
+          <div class="accroche d">Une voix guide le toucher. Chacun peut passer une consigne.</div>
+          <div class="meta">30 min · Maison · Sensuel · Gratuit</div>
+          <div class="btn">Commencer l’expérience</div>
+          <div class="btn2">Ajouter aux favoris</div>
+          <div class="bloc-t">Ce qu’il vous faut</div>
+          <div class="bloc-p">Une porte fermée. La lumière basse. Vingt minutes où personne ne vous appelle.</div>
+          <div class="encart"><b>Chacun peut arrêter, modifier ou passer une consigne.</b>À tout moment, sans avoir à l’expliquer.</div>
+        </div>
+        <div class="tab"><div><i></i>Accueil</div><div class="on"><i></i>Explorer</div><div><i></i>Surprends</div><div><i></i>Nous</div><div><i></i>Profil</div></div>
+      </div></div>
+      <p class="legende">Fiche d’expérience</p>
+    </div>
+    <div>
+      <div class="tel"><div class="ecran">
+        <div class="statut"><span>21:31</span><span></span><span>●●●</span></div>
+        <div class="corps">
+          <div class="jeu-tete"><span class="d">Et si on disait oui&nbsp;?</span><span>Quitter</span></div>
+          <div class="prog"><i></i></div>
+          <div class="sur">Révélation</div>
+          <div class="h2 d">Vos oui communs.</div>
+          <div class="p">Rien d’autre n’est montré. Les « non » restent à chacun.</div>
+          <ul class="oui d">
+            <li>Danser collés dans le salon, lumière éteinte</li>
+            <li>Une nuit ailleurs, rien que nous</li>
+            <li class="peut">Se déshabiller l’un l’autre, lentement<small>peut-être, tous les deux</small></li>
+          </ul>
+          <div class="carte"><div class="ter">Se désirer</div><div class="ti d">Un slow dans la cuisine</div><div class="ac">Une chanson chacun. Lumière éteinte.</div></div>
+        </div>
+      </div></div>
+      <p class="legende">Pendant une expérience</p>
+    </div>
+  </div>
+</template>
+
+<section class="dir A" id="A">
+  <div class="dir__tete">
+    <div>
+      <div class="dir__lettre">Typographie A</div>
+      <h1 class="dir__nom">Couture <i>nocturne</i></h1>
+      <p class="dir__idee">Une didone de magazine de mode : des pleins très gras, des déliés fins comme un fil de soie, une italique qui se cambre. Avec le néon, ça donne la couverture d’un numéro spécial « nuit ». Luxueux, un peu provocant, très adulte.</p>
+    </div>
+    <div class="specimen">
+      <div class="aa">A<i>a</i></div>
+      <div class="nom"><b>Bodoni Moda</b>titres, envies, questions</div>
+      <div class="nom"><b>Jost</b>textes, boutons, menus</div>
+      <div class="ligne">Avoir encore <i>envie de nous.</i></div>
+      <div class="lecture">Une porte fermée. La lumière basse. Vingt minutes où personne ne vous appelle.</div>
+    </div>
+  </div>
+</section>
+
+<section class="dir B" id="B">
+  <div class="dir__tete">
+    <div>
+      <div class="dir__lettre">Typographie B</div>
+      <h1 class="dir__nom">Murmure <i>à l’oreille</i></h1>
+      <p class="dir__idee">Un Garamond dessiné à la plume, avec une italique qui ressemble à une écriture de lettre d’amour. Les questions semblent écrites à la main pour l’autre. Le néon devient bougie : plus intime, plus tendre, plus littéraire.</p>
+    </div>
+    <div class="specimen">
+      <div class="aa">A<i>a</i></div>
+      <div class="nom"><b>Cormorant Garamond</b>titres, envies, questions</div>
+      <div class="nom"><b>Figtree</b>textes, boutons, menus</div>
+      <div class="ligne">Avoir encore <i>envie de nous.</i></div>
+      <div class="lecture">Une porte fermée. La lumière basse. Vingt minutes où personne ne vous appelle.</div>
+    </div>
+  </div>
+</section>
+
+<section class="dir C" id="C">
+  <div class="dir__tete">
+    <div>
+      <div class="dir__lettre">Typographie C</div>
+      <h1 class="dir__nom">Néon <i>de minuit</i></h1>
+      <p class="dir__idee">Une grotesque serrée et grasse, celle des affiches de soirée et des enseignes lumineuses. Elle va jusqu’au bout de la palette braise : directe, nocturne, insolente. Plus d’italique, plus de chuchotement, le désir parle fort.</p>
+    </div>
+    <div class="specimen">
+      <div class="aa">A<i>a</i></div>
+      <div class="nom"><b>Bricolage Grotesque</b>titres, envies, questions</div>
+      <div class="nom"><b>Hanken Grotesk</b>textes, boutons, menus</div>
+      <div class="ligne">Avoir encore <i>envie de nous.</i></div>
+      <div class="lecture">Une porte fermée. La lumière basse. Vingt minutes où personne ne vous appelle.</div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const t = document.getElementById('ecrans');
+  const seul = (location.search.match(/d=([ABC])/) || [])[1];
+  document.querySelectorAll('.dir').forEach((d) => { if (seul && d.id !== seul) d.remove(); else d.appendChild(t.content.cloneNode(true)); });
+</script>
+</body>
+</html>

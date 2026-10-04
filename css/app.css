@@ -44,7 +44,7 @@ h3 { font-size: 1.3rem; }
 .center { text-align: center; }
 
 /* ---------- Structure ---------- */
-.app { max-width: 1080px; margin: 0 auto; padding: 16px 16px 40px; }
+.app { max-width: 1080px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 40px; }
 .topbar { display: none; }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--tab-h) + env(safe-area-inset-bottom));

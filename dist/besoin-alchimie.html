@@ -51,7 +51,7 @@ h3 { font-size: 1.3rem; }
 .center { text-align: center; }
 
 /* ---------- Structure ---------- */
-.app { max-width: 1080px; margin: 0 auto; padding: 16px 16px 40px; }
+.app { max-width: 1080px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 40px; }
 .topbar { display: none; }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--tab-h) + env(safe-area-inset-bottom));
@@ -1737,6 +1737,24 @@ BA.canariExemples = [
   }
 
   /* ------------------------------------------------------------ */
+  /* Installer l'application (PWA)                                   */
+  let invitation = null;
+  window.addEventListener('beforeinstallprompt', (ev) => { ev.preventDefault(); invitation = ev; if (location.hash.indexOf('/profil') > -1) vueProfil(); });
+  window.addEventListener('appinstalled', () => { invitation = null; toast('Besoin d\u2019Alchimie est sur votre écran d\u2019accueil.'); });
+  const installee = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  const iOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const encadree = () => { try { return window.self !== window.top; } catch (e) { return true; } };
+  function blocInstaller() {
+    if (encadree()) return '';   // affiché dans un cadre (Artifact) : l'installation y est impossible
+    if (installee()) return '<div class="profil-bloc"><h3>Application</h3><p class="muted small">Vous utilisez l\u2019application installée.</p></div>';
+    let corps;
+    if (invitation) corps = '<p class="muted small">Ajoutez Besoin d\u2019Alchimie à votre écran d\u2019accueil : il s\u2019ouvre en plein écran, comme une application, même sans connexion.</p><div class="actions"><button class="btn" data-act="installer">Installer l\u2019application</button></div>';
+    else if (iOS()) corps = '<p class="muted small">Sur iPhone, ouvrez cette page dans Safari, touchez le bouton Partager (le carré avec une flèche vers le haut), puis « Sur l\u2019écran d\u2019accueil ».</p><p class="note">L\u2019application installée garde ses propres données : ce que vous avez enregistré dans Safari n\u2019y sera pas.</p>';
+    else corps = '<p class="muted small">Dans le menu de votre navigateur, choisissez « Installer l\u2019application » ou « Ajouter à l\u2019écran d\u2019accueil ».</p>';
+    return '<div class="profil-bloc"><h3>Sur votre écran d\u2019accueil</h3>' + corps + '</div>';
+  }
+
+  /* ------------------------------------------------------------ */
   /* Profil                                                          */
   function vueProfil() {
     rendre(`
@@ -1754,6 +1772,7 @@ BA.canariExemples = [
         <div class="bascule"><div><strong>${estMembre() ? 'Membre Besoin d’Alchimie' : 'Découverte'}</strong><div class="muted small">${estMembre() ? 'Toute la bibliothèque, les audios, les collections, l’espace Notre couple.' : EXP.filter((x) => x.decouverte).length + ' expériences ouvertes. Le reste s’ouvre avec l’accès membre.'}</div></div><button class="${estMembre() ? 'actif' : ''}" data-act="membre" aria-label="Basculer l’accès membre"></button></div>
         <p class="note">Dans ce prototype, l’accès se bascule d’un geste. Dans le produit, ce sera un abonnement.</p>
       </div>
+      ${blocInstaller()}
       <div class="profil-bloc">
         <h3>Vos données</h3>
         <p class="muted small">Tout ce que vous écrivez ici reste sur cet appareil. Rien n’est envoyé nulle part. Dans le produit final, un couple pourra lier deux téléphones ; ce prototype en simule un seul, qu’on se passe.</p>
@@ -1985,6 +2004,7 @@ BA.canariExemples = [
     if (a === 'fav') { ev.preventDefault(); if (S.favoris.includes(id)) { S.favoris = S.favoris.filter((x) => x !== id); toast('Retiré des favoris'); } else { S.favoris.push(id); toast('Ajouté aux favoris'); } sauver(); route(); }
     else if (a === 'afaire') { if (S.aFaire.includes(id)) { S.aFaire = S.aFaire.filter((x) => x !== id); toast('Retiré de votre liste'); } else { S.aFaire.push(id); toast('Ajouté à « À faire ensemble »'); } sauver(); route(); }
     else if (a === 'membre') { S.membre = !S.membre; sauver(); toast(S.membre ? 'Accès membre activé (prototype)' : 'Retour à l’accès Découverte'); route(); }
+    else if (a === 'installer') { if (invitation) { invitation.prompt(); invitation.userChoice.finally(() => { invitation = null; vueProfil(); }); } }
     else if (a === 'filtres') { const f = $('#filtres'); f.hidden = !f.hidden; }
     else if (a === 'quitter') { demander('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.', 'Quitter', () => aller('/experience/' + id)); }
     else if (a === 'surp') { surprise[b.dataset.k] = surprise[b.dataset.k] === b.dataset.v ? '' : b.dataset.v; vueSurprends({}); }
