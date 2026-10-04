@@ -60,8 +60,13 @@ Pour repartir de zéro : Profil, puis « Effacer le prototype et recommencer ».
 ## Fichiers
 
 - `index.html` : coquille, navigation haute (ordinateur) et barre d'onglets (téléphone).
-- `css/app.css` : charte (nuit, ambre, crème, terre, Instrument Serif et Sans).
+- `css/app.css` : charte « Braise & néon », choisie le 4 octobre 2026 parmi trois
+  propositions (`maquettes/palettes.html`, captures `maquettes/direction-*.png`).
+  Noir prune #110A0D, dégradé braise #FF5A36 vers #F0326F, flamme #FFB547, blanc
+  chaud #FFF1EA. Instrument Serif et Sans inchangées. Ancienne feuille sauvegardée
+  dans `css/app.css.bak-palette-2026-10-04`.
 - `js/data.js` : les territoires, envies, filtres, collections et les 33 expériences.
   C'est là qu'on ajoute ou corrige un contenu.
 - `js/app.js` : état local, routeur, vues, moteur d'expériences.
-- `assets/` : favicon et icône, repris de l'identité existante.
+- `assets/` : favicon et icône, repris de l'identité d'août. **Encore en ambre sur
+  fond brun** : à régénérer dans la nouvelle palette.

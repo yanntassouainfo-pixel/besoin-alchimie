@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Besoin d'Alchimie, trois palettes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+/* Planche de comparaison : trois directions de couleur, mêmes écrans, mêmes textes. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #0c0a09; }
+body { font-family: "Instrument Sans", sans-serif; color: #eee; padding: 0 0 40px; }
+.serif { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; }
+
+.dir { padding: 56px 56px 64px; width: 1320px; margin: 0 auto; background: var(--fond); color: var(--txt); position: relative; overflow: hidden; }
+.dir + .dir { margin-top: 40px; }
+.dir__tete { display: grid; grid-template-columns: 1fr 520px; gap: 40px; align-items: end; margin-bottom: 40px; position: relative; z-index: 1; }
+.dir__lettre { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--acc-txt); }
+.dir__nom { font-family: "Instrument Serif", serif; font-size: 5rem; line-height: 0.95; margin-top: 10px; }
+.dir__nom i { color: var(--acc-txt); }
+.dir__idee { font-size: 1.1rem; line-height: 1.5; color: var(--mut); margin-top: 16px; max-width: 54ch; }
+.nuancier { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.nu { display: flex; flex-direction: column; gap: 6px; }
+.nu b { display: block; height: 92px; border-radius: 10px; border: 1px solid rgba(128,128,128,0.25); }
+.nu span { font-size: 0.72rem; line-height: 1.25; color: var(--mut); }
+.nu span strong { display: block; color: var(--txt); font-weight: 600; font-size: 0.78rem; }
+.mots { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.mots span { font-size: 0.8rem; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--ligne); color: var(--mut); }
+
+.telephones { display: grid; grid-template-columns: repeat(3, 360px); gap: 44px; justify-content: center; position: relative; z-index: 1; }
+.tel { width: 360px; height: 740px; border-radius: 44px; padding: 10px; background: #050404; box-shadow: 0 30px 80px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.08); }
+.ecran { width: 100%; height: 100%; border-radius: 36px; overflow: hidden; position: relative; background: var(--fond); color: var(--txt); display: flex; flex-direction: column; }
+.legende { text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--mut); }
+.statut { height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font-size: 0.78rem; font-weight: 600; flex: none; }
+.corps { flex: 1; padding: 6px 20px 0; overflow: hidden; position: relative; }
+.tab { height: 70px; flex: none; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--ligne); background: var(--tab); }
+.tab div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 0.62rem; font-weight: 600; color: var(--mut); }
+.tab div i { width: 20px; height: 20px; border-radius: 6px; border: 1.6px solid currentColor; }
+.tab div.on { color: var(--acc-txt); }
+
+.sur { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--acc-txt); }
+.h1 { font-family: "Instrument Serif", serif; font-size: 2.35rem; line-height: 1; margin-top: 8px; }
+.p { font-size: 0.86rem; line-height: 1.45; color: var(--mut); margin-top: 10px; }
+.envies { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+.envie { min-height: 96px; border-radius: 14px; padding: 12px; display: flex; align-items: flex-end; font-family: "Instrument Serif", serif; font-size: 1.1rem; line-height: 1.05; background: var(--surf); border: 1px solid var(--ligne); }
+.envie.fort { background: var(--envie-fort); color: var(--envie-fort-txt); border-color: transparent; }
+.envie.b1 { border-bottom: 2px solid var(--t1); } .envie.b2 { border-bottom: 2px solid var(--t2); } .envie.b3 { border-bottom: 2px solid var(--t3); }
+.bandeau { margin-top: 14px; border-radius: 16px; padding: 16px; background: var(--bandeau); color: var(--bandeau-txt); position: relative; overflow: hidden; }
+.bandeau .sur { color: var(--bandeau-sur); }
+.bandeau .t { font-family: "Instrument Serif", serif; font-size: 1.45rem; line-height: 1; margin-top: 6px; }
+.bandeau .bt { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: var(--bandeau-bt); color: var(--bandeau-bt-txt); }
+
+.retour { font-size: 0.78rem; color: var(--mut); margin-bottom: 14px; }
+.fiche-h { font-family: "Instrument Serif", serif; font-size: 2.7rem; line-height: 0.95; margin-top: 8px; }
+.accroche { font-family: "Instrument Serif", serif; font-style: italic; font-size: 1.2rem; line-height: 1.15; color: var(--txt2); margin-top: 10px; }
+.meta { font-size: 0.78rem; color: var(--mut); margin-top: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--ligne); }
+.btn { display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 999px; font-weight: 600; font-size: 0.92rem; margin-top: 16px; background: var(--btn); color: var(--btn-txt); }
+.btn2 { display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 999px; font-weight: 600; font-size: 0.86rem; margin-top: 8px; border: 1px solid var(--ligne2); color: var(--txt); }
+.bloc-t { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--acc-txt); margin-top: 18px; }
+.bloc-p { font-size: 0.86rem; line-height: 1.45; color: var(--txt2); margin-top: 6px; }
+.encart { margin-top: 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--intime-bord); background: var(--surf); font-size: 0.78rem; line-height: 1.4; color: var(--mut); }
+.encart b { display: block; color: var(--txt); font-weight: 600; margin-bottom: 2px; }
+
+.jeu-tete { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 10px; font-size: 0.8rem; color: var(--mut); }
+.jeu-tete .serif { font-size: 0.95rem; }
+.prog { height: 2px; background: var(--ligne); margin: 0 -20px 26px; }
+.prog i { display: block; height: 100%; width: 78%; background: var(--prog); }
+.h2 { font-family: "Instrument Serif", serif; font-size: 2.3rem; line-height: 1; margin-top: 10px; }
+.oui { list-style: none; margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.oui li { padding: 13px 14px; border-radius: 12px; background: var(--surf); font-family: "Instrument Serif", serif; font-size: 1.12rem; line-height: 1.1; border-left: 3px solid var(--oui); }
+.oui li.peut { border-left-color: var(--peut); }
+.oui li small { font-family: "Instrument Sans", sans-serif; font-size: 0.7rem; color: var(--mut); display: block; margin-top: 4px; }
+.carte { margin-top: 14px; border-radius: 16px; padding: 16px; background: var(--surf); border: 1px solid var(--ligne); position: relative; }
+.carte::before { content: ""; position: absolute; left: 16px; top: 0; width: 36px; height: 3px; background: var(--t1); border-radius: 0 0 3px 3px; }
+.carte .ter { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--t1); }
+.carte .ti { font-family: "Instrument Serif", serif; font-size: 1.35rem; margin-top: 6px; }
+.carte .ac { font-size: 0.8rem; color: var(--mut); margin-top: 4px; }
+.terrs { display: flex; gap: 6px; margin-top: 16px; }
+.terrs span { flex: 1; height: 6px; border-radius: 3px; }
+.marque { width: 40px; height: 18px; }
+.marque path { fill: none; stroke: var(--acc-txt); stroke-width: 2.4; stroke-linejoin: round; }
+
+/* ================= A : VELOURS ================= */
+.A { --fond: #1B0A0E; --surf: #2C1118; --surf2: #3A1820; --txt: #F7E8E1; --txt2: #E6CFC6; --mut: #B7958E; --ligne: rgba(247,232,225,0.10); --ligne2: rgba(247,232,225,0.22);
+  --acc: #C8233A; --acc-txt: #E8566A; --btn: #C8233A; --btn-txt: #FFF3EE; --prog: #C8233A; --tab: rgba(20,7,10,0.94);
+  --t1: #E8566A; --t2: #C99A5B; --t3: #E2A68F; --envie-fort: #6E1424; --envie-fort-txt: #FBE9E3;
+  --bandeau: linear-gradient(140deg, #6E1424, #3A0E17); --bandeau-txt: #FBE9E3; --bandeau-sur: #E2A68F; --bandeau-bt: #F7E8E1; --bandeau-bt-txt: #3A0E17;
+  --intime-bord: rgba(232,86,106,0.45); --oui: #E8566A; --peut: #C99A5B; }
+.A::before { content: ""; position: absolute; right: -200px; top: -260px; width: 760px; height: 760px; border-radius: 50%; background: radial-gradient(circle, rgba(200,35,58,0.28), transparent 65%); }
+
+/* ================= B : PEAU ================= */
+.B { --fond: #EDD3C1; --surf: #F6E5D8; --surf2: #E3BFA8; --txt: #2A110D; --txt2: #4A2620; --mut: #7E5248; --ligne: rgba(42,17,13,0.12); --ligne2: rgba(42,17,13,0.28);
+  --acc: #B3122E; --acc-txt: #A80F2A; --btn: #B3122E; --btn-txt: #FFF1EA; --prog: #B3122E; --tab: rgba(246,229,216,0.95);
+  --t1: #B3122E; --t2: #B4532F; --t3: #5A2A22; --envie-fort: #B3122E; --envie-fort-txt: #FFF1EA;
+  --bandeau: #2A110D; --bandeau-txt: #F6E5D8; --bandeau-sur: #F08A7A; --bandeau-bt: #B3122E; --bandeau-bt-txt: #FFF1EA;
+  --intime-bord: rgba(179,18,46,0.40); --oui: #B3122E; --peut: #B4532F; }
+.B::before { content: ""; position: absolute; left: -180px; bottom: -300px; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(179,18,46,0.16), transparent 65%); }
+.B .tel { background: #2A110D; }
+
+/* ================= C : BRAISE ================= */
+.C { --fond: #110A0D; --surf: #1D1015; --surf2: #29161D; --txt: #FFF1EA; --txt2: #F2D9CF; --mut: #B09398; --ligne: rgba(255,241,234,0.10); --ligne2: rgba(255,241,234,0.22);
+  --acc: #FF5A36; --acc-txt: #FF6B45; --btn: linear-gradient(100deg, #FF5A36, #F0326F); --btn-txt: #1A0B10; --prog: linear-gradient(90deg, #FF5A36, #E0216B); --tab: rgba(17,10,13,0.94);
+  --t1: #FF6B45; --t2: #F0326F; --t3: #FFB547; --envie-fort: linear-gradient(150deg, #FF5A36, #F0326F); --envie-fort-txt: #1A0B10;
+  --bandeau: radial-gradient(120% 140% at 100% 0%, #E0216B 0%, #7A1235 38%, #1D1015 75%); --bandeau-txt: #FFF1EA; --bandeau-sur: #FFB547; --bandeau-bt: #FFF1EA; --bandeau-bt-txt: #1A0B10;
+  --intime-bord: rgba(240,50,111,0.5); --oui: #FF6B45; --peut: #FFB547; }
+.C::before { content: ""; position: absolute; left: 30%; top: -300px; width: 900px; height: 600px; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,90,54,0.22), rgba(224,33,107,0.12) 40%, transparent 70%); }
+.C .h1, .C .fiche-h, .C .h2 { text-shadow: 0 0 40px rgba(255,90,54,0.25); }
+.C .ecran::after { content: ""; position: absolute; right: -120px; top: -140px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(224,33,107,0.28), transparent 70%); pointer-events: none; }
+</style>
+</head>
+<body>
+
+<template id="ecrans">
+  <div class="telephones">
+    <div>
+      <div class="tel"><div class="ecran">
+        <div class="statut"><span>21:04</span><svg class="marque" viewBox="0 0 64 28"><path d="M14 4 L26 24 L2 24 Z"/><path d="M38 4 L62 4 L50 24 Z"/></svg><span>●●●</span></div>
+        <div class="corps">
+          <div class="sur">Bonsoir, Awa et Komi</div>
+          <div class="h1">De quoi avez-vous envie tous les deux&nbsp;?</div>
+          <div class="envies">
+            <div class="envie b1">On veut juste passer un bon moment</div>
+            <div class="envie fort">On a envie de se sentir désirés</div>
+            <div class="envie b2">On s’est un peu perdus dans le quotidien</div>
+            <div class="envie b3">On a envie de tendresse</div>
+          </div>
+          <div class="bandeau"><div class="sur">Surprends-nous</div><div class="t">Ce soir, on choisit pour vous.</div><span class="bt">Laisser choisir</span></div>
+        </div>
+        <div class="tab"><div class="on"><i></i>Accueil</div><div><i></i>Explorer</div><div><i></i>Surprends</div><div><i></i>Nous</div><div><i></i>Profil</div></div>
+      </div></div>
+      <p class="legende">Accueil</p>
+    </div>
+    <div>
+      <div class="tel"><div class="ecran">
+        <div class="statut"><span>21:06</span><span></span><span>●●●</span></div>
+        <div class="corps">
+          <div class="retour">← Se désirer</div>
+          <div class="sur">Se désirer · Expérience audio</div>
+          <div class="fiche-h">Écoute-moi</div>
+          <div class="accroche">Une voix guide le toucher. Chacun peut passer une consigne.</div>
+          <div class="meta">30 min · Maison · Sensuel · Gratuit</div>
+          <div class="btn">Commencer l’expérience</div>
+          <div class="btn2">Ajouter aux favoris</div>
+          <div class="bloc-t">Ce qu’il vous faut</div>
+          <div class="bloc-p">Une porte fermée. La lumière basse. Vingt minutes où personne ne vous appelle.</div>
+          <div class="encart"><b>Chacun peut arrêter, modifier ou passer une consigne.</b>À tout moment, sans avoir à l’expliquer.</div>
+        </div>
+        <div class="tab"><div><i></i>Accueil</div><div class="on"><i></i>Explorer</div><div><i></i>Surprends</div><div><i></i>Nous</div><div><i></i>Profil</div></div>
+      </div></div>
+      <p class="legende">Fiche d’expérience</p>
+    </div>
+    <div>
+      <div class="tel"><div class="ecran">
+        <div class="statut"><span>21:31</span><span></span><span>●●●</span></div>
+        <div class="corps">
+          <div class="jeu-tete"><span class="serif">Et si on disait oui&nbsp;?</span><span>Quitter</span></div>
+          <div class="prog"><i></i></div>
+          <div class="sur">Révélation</div>
+          <div class="h2">Vos oui communs.</div>
+          <div class="p">Rien d’autre n’est montré. Les « non » restent à chacun.</div>
+          <ul class="oui">
+            <li>Danser collés dans le salon, lumière éteinte</li>
+            <li>Une nuit ailleurs, rien que nous</li>
+            <li class="peut">Se déshabiller l’un l’autre, lentement<small>peut-être, tous les deux</small></li>
+          </ul>
+          <div class="carte"><div class="ter">Se désirer</div><div class="ti">Un slow dans la cuisine</div><div class="ac">Une chanson chacun. Lumière éteinte.</div></div>
+          <div class="terrs"><span style="background:var(--t1)"></span><span style="background:var(--t2)"></span><span style="background:var(--t3)"></span><span style="background:var(--acc)"></span><span style="background:var(--surf2)"></span></div>
+        </div>
+      </div></div>
+      <p class="legende">Pendant une expérience</p>
+    </div>
+  </div>
+</template>
+
+<section class="dir A" id="A">
+  <div class="dir__tete">
+    <div>
+      <div class="dir__lettre">Direction A</div>
+      <h1 class="dir__nom">Velours <i>bordeaux</i></h1>
+      <p class="dir__idee">Un bar d’hôtel à minuit. Le fond passe du brun-noir au bordeaux presque noir, la lumière devient carmin, et la peau répond en rose chair. Le désir chuchoté : profond, adulte, jamais criard.</p>
+      <div class="mots"><span>Velours</span><span>Vin</span><span>Lèvres</span><span>Chuchoté</span></div>
+    </div>
+    <div class="nuancier">
+      <div class="nu"><b style="background:#1B0A0E"></b><span><strong>Lie-de-vin</strong>#1B0A0E fond</span></div>
+      <div class="nu"><b style="background:#2C1118"></b><span><strong>Grenat</strong>#2C1118 surfaces</span></div>
+      <div class="nu"><b style="background:#C8233A"></b><span><strong>Carmin</strong>#C8233A action</span></div>
+      <div class="nu"><b style="background:#E2A68F"></b><span><strong>Chair</strong>#E2A68F accent</span></div>
+      <div class="nu"><b style="background:#C99A5B"></b><span><strong>Vieil or</strong>#C99A5B accent</span></div>
+      <div class="nu"><b style="background:#F7E8E1"></b><span><strong>Crème rosée</strong>#F7E8E1 texte</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="dir B" id="B">
+  <div class="dir__tete">
+    <div>
+      <div class="dir__lettre">Direction B</div>
+      <h1 class="dir__nom">Peau <i>&amp; rouge à lèvres</i></h1>
+      <p class="dir__idee">Un magazine de mode posé sur un drap. Fond clair couleur de peau, texte cacao, et un seul rouge, franc, celui d’une bouche. Le désir en plein jour : assumé, éditorial, sans pénombre pour se cacher.</p>
+      <div class="mots"><span>Peau</span><span>Lin froissé</span><span>Rouge franc</span><span>Plein jour</span></div>
+    </div>
+    <div class="nuancier">
+      <div class="nu"><b style="background:#EDD3C1"></b><span><strong>Nude</strong>#EDD3C1 fond</span></div>
+      <div class="nu"><b style="background:#F6E5D8"></b><span><strong>Drap</strong>#F6E5D8 surfaces</span></div>
+      <div class="nu"><b style="background:#B3122E"></b><span><strong>Rouge à lèvres</strong>#B3122E action</span></div>
+      <div class="nu"><b style="background:#B4532F"></b><span><strong>Terre cuite</strong>#B4532F accent</span></div>
+      <div class="nu"><b style="background:#5A2A22"></b><span><strong>Cacao</strong>#5A2A22 accent</span></div>
+      <div class="nu"><b style="background:#2A110D"></b><span><strong>Encre brune</strong>#2A110D texte</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="dir C" id="C">
+  <div class="dir__tete">
+    <div>
+      <div class="dir__lettre">Direction C</div>
+      <h1 class="dir__nom">Braise <i>&amp; néon</i></h1>
+      <p class="dir__idee">La chaleur qui monte. Un noir prune, et une lumière qui glisse de l’orange flamme au fuchsia, comme une braise qu’on attise. Le désir qui a envie : vivant, nocturne, un peu insolent.</p>
+      <div class="mots"><span>Chaleur</span><span>Nuit</span><span>Dégradé</span><span>Électrique</span></div>
+    </div>
+    <div class="nuancier">
+      <div class="nu"><b style="background:#110A0D"></b><span><strong>Noir prune</strong>#110A0D fond</span></div>
+      <div class="nu"><b style="background:#1D1015"></b><span><strong>Cendre</strong>#1D1015 surfaces</span></div>
+      <div class="nu"><b style="background:linear-gradient(135deg,#FF5A36,#F0326F)"></b><span><strong>Braise</strong>#FF5A36 → #F0326F</span></div>
+      <div class="nu"><b style="background:#F0326F"></b><span><strong>Fuchsia</strong>#F0326F accent</span></div>
+      <div class="nu"><b style="background:#FFB547"></b><span><strong>Flamme</strong>#FFB547 accent</span></div>
+      <div class="nu"><b style="background:#FFF1EA"></b><span><strong>Blanc chaud</strong>#FFF1EA texte</span></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const t = document.getElementById('ecrans');
+  const seul = (location.search.match(/d=([ABC])/) || [])[1];
+  if (seul) document.querySelectorAll('.dir').forEach((d) => { if (d.id !== seul) d.remove(); });
+  document.querySelectorAll('.dir').forEach((d) => d.appendChild(t.content.cloneNode(true)));
+</script>
+</body>
+</html>

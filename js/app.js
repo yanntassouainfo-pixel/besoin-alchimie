@@ -264,7 +264,7 @@
         <p>Choisissez, on vous propose quelque chose à vivre. Rien à préparer, rien à réussir.</p>
       </section>
       <section class="section">
-        <div class="envies">${BA.envies.map((v) => `<a class="envie" href="#/envie/${v.id}">${esc(v.texte)}</a>`).join('')}</div>
+        <div class="envies">${BA.envies.map((v) => `<a class="envie${v.id === 'desires' ? ' envie--fort' : ''}" href="#/envie/${v.id}">${esc(v.texte)}</a>`).join('')}</div>
       </section>
       <section class="section">
         <div class="bandeau">
@@ -443,7 +443,7 @@
     rendre(`
       <div class="surprise-scene">
         <div>
-          <div class="alambic"><svg viewBox="0 0 100 100"><path class="haut" d="M50 22 L74 64 L26 64 Z"/><path class="bas" d="M50 78 L26 36 L74 36 Z"/></svg></div>
+          <div class="alambic"><svg viewBox="-15 0 130 100"><defs><linearGradient id="braise" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB547"/><stop offset=".5" stop-color="#FF5A36"/><stop offset="1" stop-color="#F0326F"/></linearGradient></defs><path class="haut" d="M50 22 L74 64 L26 64 Z"/><path class="bas" d="M50 78 L26 36 L74 36 Z"/></svg></div>
           <p class="phrase" id="phrase">${phrases[0]}</p>
         </div>
       </div>
@@ -502,13 +502,19 @@
 
   function svgCanari(n) {
     const papiers = Math.min(3, Math.max(n ? 1 : 0, Math.ceil(n / 2)));
-    const slips = [[70, 120, -8], [95, 110, 6], [120, 125, -3]].slice(0, papiers).map(([x, y, r]) => `<g class="papier"><rect x="${x}" y="${y}" width="26" height="16" rx="2" fill="#F7F0E6" transform="rotate(${r} ${x + 13} ${y + 8})"/></g>`).join('');
+    const slips = [[70, 120, -8], [95, 110, 6], [120, 125, -3]].slice(0, papiers).map(([x, y, r]) => `<g class="papier"><rect x="${x}" y="${y}" width="26" height="16" rx="2" fill="#FFF1EA" transform="rotate(${r} ${x + 13} ${y + 8})"/></g>`).join('');
+    /* La jarre en terre, rougie comme une braise : corps en dégradé flamme vers fuchsia. */
     return `<svg viewBox="0 0 200 220" aria-hidden="true">
-      <path d="M62 40 Q100 30 138 40 L146 60 Q170 90 160 150 Q150 200 100 205 Q50 200 40 150 Q30 90 54 60 Z" fill="#A8563C"/>
-      <path d="M62 40 Q100 30 138 40 L146 60 Q100 72 54 60 Z" fill="#8E4530"/>
-      <ellipse cx="100" cy="40" rx="38" ry="9" fill="#1F1A17" stroke="#D98E4A" stroke-width="1.5"/>
-      <path d="M54 62 Q100 76 146 62" fill="none" stroke="#D98E4A" stroke-width="1.5" opacity=".7"/>
-      <path d="M48 120 Q100 136 152 120" fill="none" stroke="#D98E4A" stroke-width="1" opacity=".35"/>
+      <defs>
+        <linearGradient id="jarre" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF7A45"/><stop offset=".55" stop-color="#F0326F"/><stop offset="1" stop-color="#8E1446"/></linearGradient>
+        <radialGradient id="lueur" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#F0326F" stop-opacity=".45"/><stop offset="1" stop-color="#F0326F" stop-opacity="0"/></radialGradient>
+      </defs>
+      <ellipse cx="100" cy="130" rx="98" ry="92" fill="url(#lueur)"/>
+      <path d="M62 40 Q100 30 138 40 L146 60 Q170 90 160 150 Q150 200 100 205 Q50 200 40 150 Q30 90 54 60 Z" fill="url(#jarre)"/>
+      <path d="M62 40 Q100 30 138 40 L146 60 Q100 72 54 60 Z" fill="#7A1235"/>
+      <ellipse cx="100" cy="40" rx="38" ry="9" fill="#110A0D" stroke="#FFB547" stroke-width="1.5"/>
+      <path d="M54 62 Q100 76 146 62" fill="none" stroke="#FFB547" stroke-width="1.5" opacity=".7"/>
+      <path d="M48 120 Q100 136 152 120" fill="none" stroke="#FFF1EA" stroke-width="1" opacity=".25"/>
       ${slips}
     </svg>`;
   }
