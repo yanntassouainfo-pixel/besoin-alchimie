@@ -17,6 +17,17 @@ dans le navigateur (localStorage) de l'appareil.
 
 Pour repartir de zéro : Profil, puis « Effacer le prototype et recommencer ».
 
+## En ligne
+
+Publié le 4 octobre 2026 comme Artifact claude.ai, **privé** :
+https://claude.ai/artifact/5eHy4rUEf34gA143JSVyjW
+
+- Seul le compte de Yann l'ouvre tant qu'il n'est pas partagé (menu Partager de la page).
+- Le fichier publié est `dist/besoin-alchimie.html`, assemblé depuis la source par
+  `../_scripts/build_artifact.py`. Après toute modification : relancer le script, puis
+  republier le même fichier (même lien).
+- Les données d'un couple restent dans son navigateur, comme en local.
+
 ## Ce qu'il contient
 
 - Onboarding en quatre écrans (prénoms, ancienneté et enfants facultatifs, goûts).
@@ -68,5 +79,5 @@ Pour repartir de zéro : Profil, puis « Effacer le prototype et recommencer ».
 - `js/data.js` : les territoires, envies, filtres, collections et les 33 expériences.
   C'est là qu'on ajoute ou corrige un contenu.
 - `js/app.js` : état local, routeur, vues, moteur d'expériences.
-- `assets/` : favicon et icône, repris de l'identité d'août. **Encore en ambre sur
-  fond brun** : à régénérer dans la nouvelle palette.
+- `assets/` : favicon (16, 32, 48 px) et icônes 180 et 512 px dans la palette braise,
+  générés par `../_scripts/gen_icones_braise.py`. Planche de contrôle : `_controle-icones.png`.

@@ -26,21 +26,6 @@
   const chaque = (fn, ms) => { const t = setInterval(fn, ms); timers.push(t); return t; };
   const nettoyer = () => { timers.forEach(clearTimeout); timers.forEach(clearInterval); timers = []; };
 
-  /* Confirmation dans la page : les fenêtres natives (confirm) sont bloquées dans
-     certains cadres d'hébergement, et elles cassent l'ambiance de toute façon. */
-  function demander(message, oui, faire) {
-    $$('.dialogue').forEach((d) => d.remove());
-    const voile = $('#voile');
-    const d = document.createElement('div');
-    d.className = 'dialogue'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true');
-    d.innerHTML = `<p>${esc(message)}</p><div class="actions"><button class="btn" data-d="oui">${esc(oui)}</button><button class="btn btn--secondaire" data-d="non">Rester</button></div>`;
-    const fermer = () => { d.remove(); if (voile) voile.hidden = true; };
-    d.addEventListener('click', (ev) => { const b = ev.target.closest('[data-d]'); if (!b) return; fermer(); if (b.dataset.d === 'oui') faire(); });
-    if (voile) { voile.hidden = false; voile.onclick = fermer; }
-    document.body.appendChild(d);
-    const bt = d.querySelector('[data-d=non]'); if (bt) bt.focus();
-  }
-
   function toast(msg) {
     $$('.toast').forEach((t) => t.remove());
     const el = document.createElement('div');
@@ -796,7 +781,7 @@
     else if (a === 'afaire') { if (S.aFaire.includes(id)) { S.aFaire = S.aFaire.filter((x) => x !== id); toast('Retiré de votre liste'); } else { S.aFaire.push(id); toast('Ajouté à « À faire ensemble »'); } sauver(); route(); }
     else if (a === 'membre') { S.membre = !S.membre; sauver(); toast(S.membre ? 'Accès membre activé (prototype)' : 'Retour à l’accès Découverte'); route(); }
     else if (a === 'filtres') { const f = $('#filtres'); f.hidden = !f.hidden; }
-    else if (a === 'quitter') { demander('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.', 'Quitter', () => aller('/experience/' + id)); }
+    else if (a === 'quitter') { if (confirm('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.')) aller('/experience/' + id); }
     else if (a === 'surp') { surprise[b.dataset.k] = surprise[b.dataset.k] === b.dataset.v ? '' : b.dataset.v; vueSurprends({}); }
     else if (a === 'surp-go') { scenerieSurprise(); }
     else if (a === 'onb-1') { onb.a = $('#onb-a').value.trim(); onb.b = $('#onb-b').value.trim(); if (!onb.a || !onb.b) { toast('Les deux prénoms, s’il vous plaît.'); return; } aller('/bienvenue?etape=2'); }
@@ -807,7 +792,7 @@
     else if (a === 'pf-enf') { S.couple.enfants = b.dataset.v === 'oui'; sauver(); vueProfil(); }
     else if (a === 'pf-gout') { const g = b.dataset.v; S.couple.gouts = S.couple.gouts.includes(g) ? S.couple.gouts.filter((x) => x !== g) : S.couple.gouts.concat([g]); sauver(); vueProfil(); }
     else if (a === 'pf-sauver') { S.couple.a = $('#pf-a').value.trim() || S.couple.a; S.couple.b = $('#pf-b').value.trim() || S.couple.b; sauver(); toast('Enregistré'); vueProfil(); }
-    else if (a === 'reset') { demander('Tout effacer ? Prénoms, favoris, souvenirs, Canari. Il n’y a pas de retour.', 'Tout effacer', () => { try { localStorage.removeItem(CLE); } catch (e) { /* stockage indisponible */ } S = defaut(); onb = { a: '', b: '', depuis: '', enfants: null, gouts: [] }; aller('/bienvenue'); }); }
+    else if (a === 'reset') { if (confirm('Tout effacer ? Prénoms, favoris, souvenirs, Canari. Il n’y a pas de retour.')) { localStorage.removeItem(CLE); S = defaut(); onb = { a: '', b: '', depuis: '', enfants: null, gouts: [] }; aller('/bienvenue'); } }
     else if (a === 'rep-suppr') { delete S.reponses[id]; sauver(); vueCouple('reponses'); }
     else if (a === 'souv-suppr') { S.souvenirs = S.souvenirs.filter((s) => s.id !== id); sauver(); vueCouple('souvenirs'); }
     else if (a === 'souv-ouvrir') { const s = S.souvenirs.find((x) => x.id === id); if (s) { delete s.scelle; sauver(); vueCouple('souvenirs'); } }
