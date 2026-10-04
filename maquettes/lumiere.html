@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Besoin d'Alchimie, lumière vivante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+/* Démo : une lumière qui dérive dans le fond, au hasard et en douceur.
+   Les lumières sont de grands disques flous déplacés par transform (calcul par la carte
+   graphique, presque rien pour la batterie). Le trajet est une somme de sinusoïdes
+   à phases tirées au hasard : jamais deux fois le même chemin, jamais d'à-coup. */
+:root {
+  --nuit: #110A0D; --cacao: #1D1015; --creme: #FFF1EA; --fumee: #B09398; --ambre: #FF6B45; --flamme: #FFB547;
+  --ligne: rgba(255,241,234,0.10); --encre: #1A0B10;
+  --serif: "Instrument Serif", Georgia, serif; --sans: "Instrument Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--nuit); color: var(--creme); font-family: var(--sans); overflow: hidden; }
+
+.fond { position: fixed; inset: 0; overflow: hidden; z-index: 0; }
+.lum { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform; pointer-events: none; mix-blend-mode: screen; }
+.lum--braise { background: radial-gradient(circle, rgba(255, 90, 54, 0.55) 0%, rgba(240, 50, 111, 0.28) 38%, transparent 68%); }
+.lum--flamme { background: radial-gradient(circle, rgba(255, 150, 60, 0.55) 0%, rgba(255, 90, 54, 0.22) 40%, transparent 68%); }
+.lum--fuchsia { background: radial-gradient(circle, rgba(240, 50, 111, 0.55) 0%, rgba(160, 20, 80, 0.25) 40%, transparent 68%); }
+.grain { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.06; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* Contenu factice : l'accueil réel, pour juger la lisibilité par-dessus la lumière. */
+.page { position: relative; z-index: 2; height: 100%; overflow-y: auto; padding: calc(28px + env(safe-area-inset-top)) 20px 220px; max-width: 560px; margin: 0 auto; }
+.sur { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ambre); }
+h1 { font-family: var(--serif); font-weight: 400; font-size: 2.6rem; line-height: 1; margin-top: 10px; }
+.p { color: var(--fumee); margin-top: 12px; line-height: 1.5; }
+.envies { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+.envie { min-height: 104px; border-radius: 14px; padding: 14px; display: flex; align-items: flex-end; font-family: var(--serif); font-size: 1.2rem; line-height: 1.05; background: rgba(29,16,21,0.72); border: 1px solid var(--ligne); backdrop-filter: blur(2px); }
+.envie.fort { background: linear-gradient(150deg, #FF5A36, #F0326F); color: var(--encre); border-color: transparent; }
+
+/* Panneau de réglage */
+.reglages { position: fixed; z-index: 3; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); width: min(560px, calc(100vw - 24px)); padding: 14px 16px; border-radius: 18px; background: rgba(12,7,9,0.86); border: 1px solid var(--ligne); backdrop-filter: blur(12px); display: grid; gap: 10px; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.modes button { min-height: 44px; border-radius: 12px; border: 1px solid var(--ligne); background: transparent; color: var(--fumee); font: 600 0.82rem var(--sans); line-height: 1.15; padding: 6px; cursor: pointer; }
+.modes button.on { background: linear-gradient(100deg, #FF5A36, #F0326F); color: var(--encre); border-color: transparent; }
+.curseurs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.curseurs label { display: grid; gap: 4px; font-size: 0.72rem; color: var(--fumee); }
+.curseurs input { width: 100%; accent-color: #FF6B45; }
+.explique { font-size: 0.78rem; color: var(--fumee); line-height: 1.4; min-height: 2.2em; }
+@media (prefers-reduced-motion: reduce) { .explique::after { content: " (Votre appareil demande moins d'animations : en production, la lumière resterait fixe.)"; } }
+</style>
+</head>
+<body>
+
+<div class="fond" id="fond"></div>
+<div class="grain"></div>
+
+<main class="page">
+  <div class="sur">Bonsoir, Awa et Komi</div>
+  <h1>De quoi avez-vous envie tous les deux&nbsp;?</h1>
+  <p class="p">Choisissez, on vous propose quelque chose à vivre. Rien à préparer, rien à réussir.</p>
+  <div class="envies">
+    <div class="envie">On veut juste passer un bon moment</div>
+    <div class="envie fort">On a envie de se sentir désirés</div>
+    <div class="envie">On s’est un peu perdus dans le quotidien</div>
+    <div class="envie">On a envie de tendresse</div>
+    <div class="envie">On a envie de parler vraiment</div>
+    <div class="envie">On a besoin de rire</div>
+  </div>
+</main>
+
+<div class="reglages" role="group" aria-label="Réglages de la démo">
+  <div class="modes">
+    <button data-mode="une" class="on">A · Une braise qui dérive</button>
+    <button data-mode="deux">B · Deux lumières qui se cherchent</button>
+    <button data-mode="suit">C · Elle suit votre doigt</button>
+  </div>
+  <p class="explique" id="explique"></p>
+  <div class="curseurs">
+    <label>Vitesse<input type="range" id="vitesse" min="0.2" max="3" step="0.1" value="1" /></label>
+    <label>Intensité<input type="range" id="intensite" min="0.2" max="1.4" step="0.05" value="0.8" /></label>
+    <label>Taille<input type="range" id="taille" min="0.5" max="1.6" step="0.05" value="1" /></label>
+  </div>
+</div>
+
+<script>
+(() => {
+  const fond = document.getElementById('fond');
+  const textes = {
+    une: 'Une seule lumière braise erre lentement dans le fond, sans jamais repasser au même endroit.',
+    deux: 'Une lumière flamme et une lumière fuchsia errent chacune de leur côté. Parfois elles se rejoignent et se mêlent, puis repartent.',
+    suit: 'La lumière dérive seule, et quand on touche l’écran elle glisse doucement vers le doigt, avec retard, comme attirée.'
+  };
+  const reglage = { vitesse: 1, intensite: 0.8, taille: 1 };
+  let mode = 'une', lumieres = [], cible = null;
+
+  /* Un chemin aléatoire et doux : trois sinusoïdes par axe, fréquences et phases tirées au hasard. */
+  const chemin = () => {
+    const onde = () => ({ f: 0.012 + Math.random() * 0.03, p: Math.random() * Math.PI * 2, a: 0.25 + Math.random() * 0.75 });
+    return { x: [onde(), onde(), onde()], y: [onde(), onde(), onde()] };
+  };
+  const evalue = (ondes, t) => { let s = 0, n = 0; ondes.forEach((o) => { s += o.a * Math.sin(t * o.f * Math.PI * 2 + o.p); n += o.a; }); return s / n; };
+
+  function creer() {
+    fond.innerHTML = '';
+    const defs = mode === 'deux' ? ['flamme', 'fuchsia'] : ['braise'];
+    lumieres = defs.map((teinte) => {
+      const el = document.createElement('div');
+      el.className = 'lum lum--' + teinte;
+      fond.appendChild(el);
+      return { el, c: chemin(), x: innerWidth / 2, y: innerHeight / 2 };
+    });
+  }
+
+  let t0 = performance.now(), t = Math.random() * 1000, enPause = false;
+  function image(now) {
+    const dt = Math.min(0.05, (now - t0) / 1000); t0 = now;
+    if (!enPause) t += dt * reglage.vitesse;
+    const W = innerWidth, H = innerHeight, base = Math.max(W, H) * 0.95 * reglage.taille;
+    lumieres.forEach((l, i) => {
+      // Position voulue : le chemin aléatoire, étalé sur toute la surface (et un peu au-delà).
+      let vx = W / 2 + evalue(l.c.x, t) * W * 0.62, vy = H / 2 + evalue(l.c.y, t) * H * 0.55;
+      if (mode === 'suit' && cible) { vx = vx * 0.25 + cible.x * 0.75; vy = vy * 0.25 + cible.y * 0.75; }
+      // Inertie : la lumière rejoint sa position voulue en douceur, jamais d'à-coup.
+      const k = mode === 'suit' && cible ? 0.025 : 0.06;
+      l.x += (vx - l.x) * k; l.y += (vy - l.y) * k;
+      const respire = 1 + 0.08 * Math.sin(t * 0.35 + i * 2.1);
+      const s = base * (mode === 'deux' ? 0.8 : 1) * respire;
+      l.el.style.width = l.el.style.height = s + 'px';
+      l.el.style.opacity = reglage.intensite;
+      l.el.style.transform = `translate3d(${l.x - s / 2}px, ${l.y - s / 2}px, 0)`;
+    });
+    requestAnimationFrame(image);
+  }
+
+  // Économie : pause quand la page est cachée.
+  document.addEventListener('visibilitychange', () => { enPause = document.hidden; });
+
+  const poser = (x, y) => { cible = { x, y }; };
+  window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' || e.buttons) poser(e.clientX, e.clientY); });
+  window.addEventListener('pointerdown', (e) => poser(e.clientX, e.clientY));
+  window.addEventListener('pointerleave', () => { cible = null; });
+  window.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') setTimeout(() => { cible = null; }, 2500); });
+
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-mode]').forEach((x) => x.classList.toggle('on', x === b));
+    mode = b.dataset.mode; cible = null; document.getElementById('explique').textContent = textes[mode]; creer();
+  }));
+  ['vitesse', 'intensite', 'taille'].forEach((k) => document.getElementById(k).addEventListener('input', (e) => { reglage[k] = parseFloat(e.target.value); }));
+
+  document.getElementById('explique').textContent = textes[mode];
+  creer();
+  requestAnimationFrame(image);
+})();
+</script>
+</body>
+</html>

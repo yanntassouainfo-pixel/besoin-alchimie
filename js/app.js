@@ -839,6 +839,42 @@
     else if (a === 'canari-remettre') { const c = S.canari.find((x) => x.id === id); if (c) { c.tire = false; sauver(); vueCouple('canari'); } }
   });
 
+  /* ------------------------------------------------------------ */
+  /* Lumière vivante                                                 */
+  /* Une braise (ou plusieurs lumières : il suffit d'ajouter des <i> dans #lumiere).
+     Chaque lumière suit un chemin fait de trois sinusoïdes par axe, aux fréquences et
+     phases tirées au hasard : jamais deux fois le même trajet, jamais d'à-coup. Une
+     inertie lisse encore le mouvement. Pause quand l'app est cachée ou pendant une
+     expérience ; fixe si l'appareil demande moins d'animations. */
+  (function lumiereVivante() {
+    const boite = document.getElementById('lumiere'); if (!boite) return;
+    const spheres = Array.from(boite.children);
+    const onde = () => ({ f: 0.012 + Math.random() * 0.03, p: Math.random() * Math.PI * 2, a: 0.25 + Math.random() * 0.75 });
+    const val = (o, t) => { let s = 0, n = 0; o.forEach((w) => { s += w.a * Math.sin(t * w.f * Math.PI * 2 + w.p); n += w.a; }); return s / n; };
+    const L = spheres.map((el) => ({ el, x: [onde(), onde(), onde()], y: [onde(), onde(), onde()], px: innerWidth / 2, py: innerHeight / 2 }));
+    const calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let t = Math.random() * 1000, avant = performance.now(), premier = true;
+    function image(now) {
+      const dt = Math.min(0.05, (now - avant) / 1000); avant = now;
+      const actif = !document.hidden && !document.querySelector('.jeu');
+      boite.style.visibility = document.querySelector('.jeu') ? 'hidden' : 'visible';
+      if (actif || premier) {
+        if (!calme) t += dt;
+        const W = innerWidth, H = innerHeight, base = Math.max(W, H) * (L.length > 1 ? 0.8 : 0.95);
+        L.forEach((l, i) => {
+          const vx = W / 2 + val(l.x, t) * W * 0.62, vy = H / 2 + val(l.y, t) * H * 0.55;
+          if (premier) { l.px = vx; l.py = vy; } else { l.px += (vx - l.px) * 0.06; l.py += (vy - l.py) * 0.06; }
+          const taille = base * (1 + 0.08 * Math.sin(t * 0.35 + i * 2.1));
+          l.el.style.width = l.el.style.height = taille + 'px';
+          l.el.style.transform = 'translate3d(' + (l.px - taille / 2) + 'px,' + (l.py - taille / 2) + 'px,0)';
+        });
+        premier = false;
+      }
+      if (!calme) requestAnimationFrame(image);
+    }
+    requestAnimationFrame(image);
+  })();
+
   window.addEventListener('hashchange', route);
   route();
 })();

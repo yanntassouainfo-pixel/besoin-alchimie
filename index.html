@@ -18,9 +18,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/app.css?v=4" />
+<link rel="stylesheet" href="css/app.css?v=6" />
 </head>
 <body>
+
+<div class="lumiere" id="lumiere" aria-hidden="true"><i class="l-braise"></i></div>
 
 <header class="topbar" id="topbar">
   <a class="brand" href="#/">
@@ -49,7 +51,7 @@
 <div id="voile" class="voile" hidden></div>
 
 <script src="js/data.js?v=4"></script>
-<script src="js/app.js?v=4"></script>
+<script src="js/app.js?v=6"></script>
 <script>
   /* Application installable : le service worker ne s'enregistre qu'en HTTPS (ou en local). */
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

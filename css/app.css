@@ -23,7 +23,7 @@
 html { background: var(--nuit); -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--sans); font-size: 17px; line-height: 1.5; color: var(--creme);
-  background: var(--nuit) radial-gradient(900px 600px at 85% -10%, rgba(255, 90, 54, 0.16), rgba(224, 33, 107, 0.08) 45%, transparent 70%) no-repeat;
+  background: var(--nuit);
   min-height: 100vh;
   padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
 }
@@ -44,6 +44,18 @@ h3 { font-size: 1.3rem; }
 .center { text-align: center; }
 
 /* ---------- Structure ---------- */
+/* ---------- Lumière vivante ----------
+   Une braise (flamme au cœur, fuchsia sur les bords) dérive lentement dans le fond,
+   sans jamais repasser au même endroit. Discrète par choix (4 octobre 2026).
+   Absente pendant une expérience. Les teintes flamme et fuchsia restent disponibles
+   pour revenir à la version à deux lumières. */
+.lumiere { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.lumiere i { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform; mix-blend-mode: screen; opacity: 0.5; }
+.lumiere .l-braise { background: radial-gradient(circle, rgba(255, 90, 54, 0.55) 0%, rgba(240, 50, 111, 0.28) 38%, transparent 68%); }
+.lumiere .l-flamme { background: radial-gradient(circle, rgba(255, 150, 60, 0.55) 0%, rgba(255, 90, 54, 0.22) 40%, transparent 68%); }
+.lumiere .l-fuchsia { background: radial-gradient(circle, rgba(240, 50, 111, 0.55) 0%, rgba(160, 20, 80, 0.25) 40%, transparent 68%); }
+.topbar, .app { position: relative; z-index: 1; }
+
 .app { max-width: 1080px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 40px; }
 .topbar { display: none; }
 .tabbar {

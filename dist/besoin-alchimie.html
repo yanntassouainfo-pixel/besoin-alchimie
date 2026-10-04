@@ -30,7 +30,7 @@
 html { background: var(--nuit); -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--sans); font-size: 17px; line-height: 1.5; color: var(--creme);
-  background: var(--nuit) radial-gradient(900px 600px at 85% -10%, rgba(255, 90, 54, 0.16), rgba(224, 33, 107, 0.08) 45%, transparent 70%) no-repeat;
+  background: var(--nuit);
   min-height: 100vh;
   padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
 }
@@ -51,6 +51,18 @@ h3 { font-size: 1.3rem; }
 .center { text-align: center; }
 
 /* ---------- Structure ---------- */
+/* ---------- Lumière vivante ----------
+   Une braise (flamme au cœur, fuchsia sur les bords) dérive lentement dans le fond,
+   sans jamais repasser au même endroit. Discrète par choix (4 octobre 2026).
+   Absente pendant une expérience. Les teintes flamme et fuchsia restent disponibles
+   pour revenir à la version à deux lumières. */
+.lumiere { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.lumiere i { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform; mix-blend-mode: screen; opacity: 0.5; }
+.lumiere .l-braise { background: radial-gradient(circle, rgba(255, 90, 54, 0.55) 0%, rgba(240, 50, 111, 0.28) 38%, transparent 68%); }
+.lumiere .l-flamme { background: radial-gradient(circle, rgba(255, 150, 60, 0.55) 0%, rgba(255, 90, 54, 0.22) 40%, transparent 68%); }
+.lumiere .l-fuchsia { background: radial-gradient(circle, rgba(240, 50, 111, 0.55) 0%, rgba(160, 20, 80, 0.25) 40%, transparent 68%); }
+.topbar, .app { position: relative; z-index: 1; }
+
 .app { max-width: 1080px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 40px; }
 .topbar { display: none; }
 .tabbar {
@@ -469,6 +481,8 @@ hr.sep { border: 0; border-top: 1px solid var(--ligne); margin: 28px 0; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
 
 </style>
+
+<div class="lumiere" id="lumiere" aria-hidden="true"><i class="l-braise"></i></div>
 
 <header class="topbar" id="topbar">
   <a class="brand" href="#/">
@@ -2028,6 +2042,42 @@ BA.canariExemples = [
     else if (a === 'canari-tirer') { const dedans = S.canari.filter((c) => !c.tire); if (!dedans.length) return; const c = hasard(dedans); $('#canari').classList.add('canari--tire'); b.disabled = true; plusTard(() => { c.tire = true; c.tireLe = new Date().toISOString(); sauver(); $('#idee').innerHTML = `<div class="idee">${esc(c.texte)}<small>glissée par ${esc(nom(c.par))}, le ${dateFr(c.date)}</small></div>`; $('#canari').classList.remove('canari--tire'); $('#canari').innerHTML = svgCanari(dedans.length - 1); b.disabled = dedans.length - 1 === 0; }, 1300); }
     else if (a === 'canari-remettre') { const c = S.canari.find((x) => x.id === id); if (c) { c.tire = false; sauver(); vueCouple('canari'); } }
   });
+
+  /* ------------------------------------------------------------ */
+  /* Lumière vivante                                                 */
+  /* Une braise (ou plusieurs lumières : il suffit d'ajouter des <i> dans #lumiere).
+     Chaque lumière suit un chemin fait de trois sinusoïdes par axe, aux fréquences et
+     phases tirées au hasard : jamais deux fois le même trajet, jamais d'à-coup. Une
+     inertie lisse encore le mouvement. Pause quand l'app est cachée ou pendant une
+     expérience ; fixe si l'appareil demande moins d'animations. */
+  (function lumiereVivante() {
+    const boite = document.getElementById('lumiere'); if (!boite) return;
+    const spheres = Array.from(boite.children);
+    const onde = () => ({ f: 0.012 + Math.random() * 0.03, p: Math.random() * Math.PI * 2, a: 0.25 + Math.random() * 0.75 });
+    const val = (o, t) => { let s = 0, n = 0; o.forEach((w) => { s += w.a * Math.sin(t * w.f * Math.PI * 2 + w.p); n += w.a; }); return s / n; };
+    const L = spheres.map((el) => ({ el, x: [onde(), onde(), onde()], y: [onde(), onde(), onde()], px: innerWidth / 2, py: innerHeight / 2 }));
+    const calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let t = Math.random() * 1000, avant = performance.now(), premier = true;
+    function image(now) {
+      const dt = Math.min(0.05, (now - avant) / 1000); avant = now;
+      const actif = !document.hidden && !document.querySelector('.jeu');
+      boite.style.visibility = document.querySelector('.jeu') ? 'hidden' : 'visible';
+      if (actif || premier) {
+        if (!calme) t += dt;
+        const W = innerWidth, H = innerHeight, base = Math.max(W, H) * (L.length > 1 ? 0.8 : 0.95);
+        L.forEach((l, i) => {
+          const vx = W / 2 + val(l.x, t) * W * 0.62, vy = H / 2 + val(l.y, t) * H * 0.55;
+          if (premier) { l.px = vx; l.py = vy; } else { l.px += (vx - l.px) * 0.06; l.py += (vy - l.py) * 0.06; }
+          const taille = base * (1 + 0.08 * Math.sin(t * 0.35 + i * 2.1));
+          l.el.style.width = l.el.style.height = taille + 'px';
+          l.el.style.transform = 'translate3d(' + (l.px - taille / 2) + 'px,' + (l.py - taille / 2) + 'px,0)';
+        });
+        premier = false;
+      }
+      if (!calme) requestAnimationFrame(image);
+    }
+    requestAnimationFrame(image);
+  })();
 
   window.addEventListener('hashchange', route);
   route();

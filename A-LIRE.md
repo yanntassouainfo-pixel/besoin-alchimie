@@ -97,3 +97,13 @@ Ajoutée le 4 octobre 2026. Le prototype public est sur GitHub Pages
 - Testé le 4/10 dans Chrome piloté : service worker actif, 10 fichiers en cache,
   aucune erreur d'installabilité, ouverture hors connexion. Pas testé sur un vrai
   téléphone.
+
+## Lumière vivante
+
+Ajoutée le 4 octobre 2026, après démo (`maquettes/lumiere.html`) et choix de Yann :
+**une seule braise qui dérive** (version A de la démo, retenue après un essai à deux
+lumières) ; partout sauf pendant une expérience ; discrète ; sans réaction au toucher.
+Pour revenir à deux lumières : remettre `<i class="l-flamme"></i><i class="l-fuchsia"></i>`
+dans `#lumiere` (index.html).
+Code : bloc « Lumière vivante » en fin de `js/app.js`, styles `.lumiere` dans `css/app.css`.
+Pause quand l'app est cachée, fixe si l'appareil demande moins d'animations.
