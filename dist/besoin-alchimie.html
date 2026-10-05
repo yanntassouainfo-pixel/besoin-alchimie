@@ -146,18 +146,25 @@ body.plein { padding-bottom: 0; }
 .carte:hover { transform: translateY(-2px); border-color: var(--ligne-2); background: var(--cacao-2); }
 .carte__terr { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teinte); }
 .carte__titre { font-family: var(--serif); font-size: 1.55rem; line-height: 1.05; }
-.carte__accroche { color: var(--fumee); font-size: 0.95rem; flex: 1; }
+.carte__accroche { color: var(--fumee); font-size: 0.95rem; }
+.carte__pied { margin-top: auto; }
 .carte__meta { font-size: 0.82rem; color: var(--fumee); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
 .carte__meta .pt { opacity: 0.6; }
-.carte__tags { position: absolute; right: 16px; top: 16px; display: flex; gap: 6px; }
+/* Territoire et étiquettes partagent une ligne qui passe à la ligne si la carte est étroite :
+   plus rien n'est posé en absolu par-dessus le texte. */
+.carte__haut { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; min-height: 22px; }
+.carte__tags { display: flex; flex-wrap: wrap; gap: 6px; position: relative; z-index: 2; }
 .tag { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; background: rgba(255,241,234,0.08); color: var(--fumee); }
 .tag--audio { color: var(--ambre); }
 .tag--intime { color: #FF7FA8; }
 .tag--decouverte { color: var(--flamme); }
 .fav {
-  position: absolute; right: 12px; bottom: 12px; width: 40px; height: 40px; border-radius: 50%;
+  position: relative; flex: none; width: 40px; height: 40px; margin: -8px -8px -8px 0; border-radius: 50%;
   display: grid; place-items: center; color: var(--fumee); z-index: 2;
 }
+/* Pied de carte : les infos à gauche, le favori au bout de la ligne, jamais par-dessus. */
+.carte__pied { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.carte__pied .carte__meta { min-width: 0; }
 .fav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .fav.actif { color: var(--ambre); }
 .fav.actif svg { fill: currentColor; }
@@ -463,6 +470,19 @@ body.plein { padding-bottom: 0; }
 .membre-encart p { color: var(--fumee); max-width: 48ch; }
 .membre-encart ul { list-style: none; margin: 14px 0; display: grid; gap: 6px; color: var(--creme-2); font-size: 0.95rem; }
 .membre-encart li::before { content: "·"; color: var(--ambre); margin-right: 8px; }
+
+/* ---------- Aide et compteurs ---------- */
+.aide-pays { display: grid; grid-template-columns: 1fr; gap: 0; margin-top: 18px; }
+@media (min-width: 900px) { .aide-pays { grid-template-columns: repeat(2, 1fr); gap: 0 14px; } }
+.aide-num { display: grid; grid-template-columns: 7.5em 1fr; gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--ligne); }
+.aide-num:first-of-type { border-top: 0; }
+.aide-num a { font-family: var(--serif); font-size: 1.7rem; line-height: 1; color: var(--creme); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aide-num span { color: var(--fumee); font-size: 0.92rem; }
+.lien-aide { color: var(--fumee); text-decoration: underline; text-underline-offset: 3px; }
+.lien-aide:hover { color: var(--creme); }
+.compteurs { list-style: none; margin: 14px 0 4px; display: flex; flex-direction: column; }
+.compteurs li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--ligne); font-size: 0.92rem; }
+.compteurs li b { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 /* ---------- Toast ---------- */
 .toast { position: fixed; left: 50%; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 18px; border-radius: 999px; background: var(--creme); color: var(--encre); font-weight: 500; font-size: 0.95rem; z-index: 200; box-shadow: var(--ombre); animation: entre .25s ease both; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
@@ -1260,7 +1280,9 @@ BA.canariExemples = [
     onboarded: false,
     couple: { a: '', b: '', depuis: '', enfants: null, gouts: [] },
     membre: false,
-    favoris: [], aFaire: [], vecues: [], souvenirs: [], reponses: {}, canari: [], envies: []
+    favoris: [], aFaire: [], vecues: [], souvenirs: [], reponses: {}, canari: [], envies: [],
+    majeurs: false,
+    mesure: { actif: true, compteurs: {} }
   });
   let S = charger();
   function charger() {
@@ -1271,6 +1293,31 @@ BA.canariExemples = [
     try { localStorage.setItem(CLE, JSON.stringify(S)); }
     catch (e) { toast('Impossible d’enregistrer sur cet appareil.'); }
   }
+  /* ------------------------------------------------------------ */
+  /* Mesure d'audience                                               */
+  /* L'app compte ce qui est ouvert et terminé, jamais ce qui est écrit : ni prénoms,
+     ni réponses, ni souvenirs. Pour « Se désirer », seul le territoire est compté,
+     jamais l'expérience. Aujourd'hui les compteurs restent sur le téléphone (Profil,
+     « Ce que l'app compte »). Pour les envoyer à un outil de mesure sans cookie, créer
+     un compte Plausible et renseigner son domaine ici, après avoir vérifié les
+     conditions d'exemption de consentement (CNIL) : */
+  const MESURE_PLAUSIBLE = null;   // ex. 'yanntassouainfo-pixel.github.io'
+  function mesure(nom, quoi) {
+    if (!S.mesure) S.mesure = { actif: true, compteurs: {} };
+    if (!S.mesure.actif) return;
+    const cle = quoi ? nom + ' · ' + quoi : nom;
+    S.mesure.compteurs[cle] = (S.mesure.compteurs[cle] || 0) + 1;
+    sauver();
+    if (MESURE_PLAUSIBLE && navigator.sendBeacon) {
+      try {
+        const corps = JSON.stringify({ name: nom, domain: MESURE_PLAUSIBLE, url: location.origin + location.pathname, props: quoi ? { quoi } : {} });
+        navigator.sendBeacon('https://plausible.io/api/event', new Blob([corps], { type: 'text/plain' }));
+      } catch (e) { /* envoi impossible : le compteur local suffit */ }
+    }
+  }
+  /* Le nom compté pour une expérience : le détail jamais pour l'intime. */
+  const nomMesure = (e) => (e.intime || e.territoire === 'desirer') ? 'Se désirer (détail non compté)' : e.titre;
+
   const noms = () => ({ A: S.couple.a || 'Toi', B: S.couple.b || 'L’autre' });
   const nom = (qui) => noms()[qui] || qui;
 
@@ -1362,12 +1409,10 @@ BA.canariExemples = [
     const fav = S.favoris.includes(e.id);
     return `<article class="carte t-${e.territoire}">
       <a class="carte__lien" href="#/experience/${e.id}" aria-label="${esc(e.titre)}"></a>
-      <div class="carte__tags">${tags.join('')}</div>
-      <div class="carte__terr">${esc(terr(e.territoire).nom)}</div>
+      <div class="carte__haut"><div class="carte__terr">${esc(terr(e.territoire).nom)}</div>${tags.length ? `<div class="carte__tags">${tags.join('')}</div>` : ''}</div>
       <h3 class="carte__titre">${esc(e.titre)}</h3>
       <p class="carte__accroche">${esc(e.accroche)}</p>
-      <div class="carte__meta">${m.slice(0, 3).map(esc).join('<span class="pt"> · </span>')}</div>
-      <button class="fav ${fav ? 'actif' : ''}" data-act="fav" data-id="${e.id}" aria-label="${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${svgFav}</button>
+      <div class="carte__pied"><div class="carte__meta">${m.slice(0, 3).map(esc).join('<span class="pt"> · </span>')}</div><button class="fav ${fav ? 'actif' : ''}" data-act="fav" data-id="${e.id}" aria-label="${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${svgFav}</button></div>
     </article>`;
   }
 
@@ -1389,6 +1434,21 @@ BA.canariExemples = [
     app.innerHTML = html;
     window.scrollTo(0, 0);
   }
+  /* Redessine l'écran courant sur place (un bouton bascule, un favori, une option)
+     en gardant ce que la personne a saisi, l'élément actif et la position de
+     défilement. Sans cela, chaque redessin effaçait les champs non enregistrés. */
+  let enPlace = false;
+  function rerendre(fn) {
+    const y = window.scrollY;
+    const actif = document.activeElement && document.activeElement.id;
+    const saisies = {};
+    $$('#app input[id], #app textarea[id], #app select[id]').forEach((el) => { if (el.type !== 'file') saisies[el.id] = el.value; });
+    enPlace = true;
+    try { fn(); } finally { enPlace = false; }
+    Object.keys(saisies).forEach((k) => { const el = document.getElementById(k); if (el) el.value = saisies[k]; });
+    window.scrollTo(0, y);
+    if (actif) { const el = document.getElementById(actif); if (el) el.focus({ preventScroll: true }); }
+  }
   function navActif(cle) {
     $$('[data-nav]').forEach((a) => a.classList.toggle('actif', a.dataset.nav === cle));
   }
@@ -1401,9 +1461,13 @@ BA.canariExemples = [
     (requete || '').split('&').filter(Boolean).forEach((p) => { const [k, v] = p.split('='); q[decodeURIComponent(k)] = decodeURIComponent(v || ''); });
     const seg = chemin.split('/').filter(Boolean);
 
+    if (seg[0] === 'aide') { navActif(''); return vueAide(); }
+    if (!S.majeurs) { if (seg[0] !== 'age') { aller('/age'); return; } return vueAge(q.non === '1'); }
     if (!S.onboarded && seg[0] !== 'bienvenue') { aller('/bienvenue'); return; }
 
     const r = seg[0] || '';
+    if (r === 'age') { aller(S.onboarded ? '/' : '/bienvenue'); return; }
+    if (!enPlace) mesure('Page', r === 'experience' || r === 'jouer' ? r : (r || 'accueil'));
     if (r === 'bienvenue') return vueOnboarding(parseInt(q.etape || '0', 10));
     if (r === '') { navActif('accueil'); return vueAccueil(); }
     if (r === 'envie') { navActif('accueil'); return vueEnvie(seg[1], seg[2], seg[3]); }
@@ -1417,6 +1481,67 @@ BA.canariExemples = [
     if (r === 'couple') { navActif('couple'); return vueCouple(q.o || 'vecues'); }
     if (r === 'profil') { navActif('profil'); return vueProfil(); }
     aller('/');
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Porte d'âge                                                     */
+  const marqueSvg = '<svg class="brand__mark" viewBox="0 0 64 28" aria-hidden="true"><path d="M14 4 L26 24 L2 24 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M38 4 L62 4 L50 24 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+  function vueAge(non) {
+    if (non) {
+      return rendre(`<div class="onb">${marqueSvg}
+        <h1>Ce n\u2019est pas encore pour vous.</h1>
+        <p class="corps">Besoin d\u2019Alchimie est réservé aux couples dont les deux partenaires ont 18 ans ou plus. Revenez quand ce sera le cas.</p>
+        <div class="actions"><a class="btn btn--discret" href="#/age">Je me suis trompé</a></div>
+      </div>`, true);
+    }
+    rendre(`<div class="onb">${marqueSvg}
+      <div class="surtitre">Avant d\u2019entrer</div>
+      <h1>Avez-vous tous les deux 18 ans ou plus&nbsp;?</h1>
+      <p class="corps">Besoin d\u2019Alchimie s\u2019adresse aux couples adultes. Certaines expériences parlent de désir, de toucher et de sensualité.</p>
+      <div class="actions actions--col" style="max-width:360px">
+        <button class="btn" data-act="majeurs">Oui, tous les deux</button>
+        <a class="btn btn--secondaire" href="#/age?non=1">Non</a>
+      </div>
+      <p class="note">Votre réponse est gardée sur ce téléphone uniquement.</p>
+    </div>`, true);
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Si quelque chose ne va pas                                      */
+  /* Numéros vérifiés le 4 octobre 2026 à leur source officielle :
+     France, service-public.gouv.fr (page vérifiée le 1er avril 2026) ;
+     Belgique, ecouteviolencesconjugales.be, et 112 numéro d'urgence européen ;
+     Togo, conseils aux voyageurs de France Diplomatie (mise à jour du 15 septembre 2026).
+     Aucune ligne togolaise dédiée aux violences n'a pu être vérifiée : aucune n'est affichée.
+     Cette page n'est jamais comptée par la mesure d'audience. */
+  function vueAide() {
+    const num = (n, tel, detail) => `<div class="aide-num"><a href="tel:${tel}">${n}</a><span>${detail}</span></div>`;
+    rendre(`
+      <a class="retour" href="#/">← Retour</a>
+      <section class="hero"><div class="surtitre">Si quelque chose ne va pas</div>
+        <h1>Personne ne devrait porter ça sans aide.</h1>
+        <p>Besoin d\u2019Alchimie est fait pour les couples qui vont bien, ou à peu près. Si l\u2019un de vous a peur de l\u2019autre, se sent surveillé, rabaissé, contrôlé ou menacé, ces expériences ne sont pas faites pour ce moment-là. Parlez-en à quelqu\u2019un de confiance, et à un service d\u2019aide.</p>
+      </section>
+      <div class="aide-pays">
+        <div class="profil-bloc"><h3>France</h3>
+          ${num('39 19', '3919', 'Violences Femmes Info. Gratuit, anonyme, 24 h sur 24 et 7 jours sur 7. L\u2019appel n\u2019apparaît pas sur la facture.')}
+          ${num('17', '17', 'Police secours, en cas d\u2019urgence. Le 112 fonctionne aussi.')}
+          ${num('114', 'sms:114', 'Par SMS, gratuit, 24 h sur 24, si vous ne pouvez pas parler.')}
+        </div>
+        <div class="profil-bloc"><h3>Belgique</h3>
+          ${num('0800 30 030', '080030030', 'Écoute Violences Conjugales. Gratuit et anonyme.')}
+          ${num('112', '112', 'Numéro d\u2019urgence européen.')}
+        </div>
+        <div class="profil-bloc"><h3>Togo</h3>
+          ${num('117', '117', 'Police secours depuis un téléphone fixe.')}
+          ${num('161', '161', 'Police secours depuis un téléphone portable.')}
+          ${num('172', '172', 'Gendarmerie.')}
+        </div>
+        <div class="profil-bloc"><h3>Ailleurs</h3><p class="muted small">Appelez le numéro d\u2019urgence de la police de votre pays. Un médecin, un centre de santé ou une association locale peuvent aussi vous orienter.</p></div>
+      </div>
+      <p class="note">Numéros vérifiés le 4 octobre 2026 sur des sources officielles. Cette page n\u2019est jamais comptée dans les statistiques de l\u2019app.</p>
+      <div class="actions"><button class="btn btn--secondaire" data-act="sortie">Quitter vite cette page</button></div>
+    `);
   }
 
   /* ------------------------------------------------------------ */
@@ -1448,7 +1573,7 @@ BA.canariExemples = [
         <h1>Deux questions, facultatives.</h1>
         <p class="corps">Elles servent uniquement à mieux choisir ce qu’on vous propose.</p>
         <div class="champ"><label for="onb-d">Depuis combien de temps êtes-vous ensemble ?</label>
-          <select id="onb-d"><option value="">Je préfère ne pas dire</option><option value="moins-2">Moins de deux ans</option><option value="2-7">Entre deux et sept ans</option><option value="7-15">Entre sept et quinze ans</option><option value="15-plus">Plus de quinze ans</option></select></div>
+          <select id="onb-d">${[['', 'Je préfère ne pas dire'], ['moins-2', 'Moins de deux ans'], ['2-7', 'Entre deux et sept ans'], ['7-15', 'Entre sept et quinze ans'], ['15-plus', 'Plus de quinze ans']].map(([v, l]) => `<option value="${v}"${onb.depuis === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="champ"><label>Avez-vous des enfants ?</label>
           <div class="puces"><button class="puce ${onb.enfants === true ? 'actif' : ''}" data-act="onb-enf" data-v="oui">Oui</button><button class="puce ${onb.enfants === false ? 'actif' : ''}" data-act="onb-enf" data-v="non">Non</button></div></div>
         <div class="actions"><button class="btn" data-act="onb-2">Continuer</button><a class="btn btn--discret" href="#/bienvenue?etape=3">Passer</a></div>
@@ -1534,6 +1659,7 @@ BA.canariExemples = [
       `);
     }
     const r = recommander(envieId, temps, energie, 3);
+    mesure('Propositions vues', envie.texte);
     rendre(`
       <a class="retour" href="#/envie/${envie.id}/${temps}">← Changer d’énergie</a>
       <section class="hero"><div class="surtitre">${esc(envie.texte)} · ${esc(libelle(BA.temps, temps))} · ${esc(libelle(BA.energies, energie))}</div>
@@ -1622,6 +1748,7 @@ BA.canariExemples = [
           <div class="exp-bloc"><h3>Avant de commencer</h3><p>${esc(e.avant)}</p></div>
           <div class="exp-bloc"><h3>Comment ça se passe</h3><p>${esc(e.mecanique)}. ${e.etapes.length > 1 ? e.etapes.length + ' temps, dévoilés un par un.' : 'Un seul temps, guidé.'} On ne vous montre pas tout à l’avance : la surprise fait partie de l’expérience.</p></div>
           ${e.intime ? '<div class="encart encart--intime"><strong>Chacun peut arrêter, modifier ou passer une consigne.</strong>À tout moment, sans avoir à l’expliquer. Rien ici ne mène quelque part où l’un de vous n’a pas envie d’aller.</div>' : ''}
+          <p class="note"><a class="lien-aide" href="#/aide">Si votre relation vous fait peur</a></p>
           ${!ok ? `<div class="membre-encart"><div class="surtitre">Bibliothèque complète</div><h2>Cette expérience fait partie de la bibliothèque complète.</h2><p>L’accès Découverte comprend ${EXP.filter((x) => x.decouverte).length} expériences. La bibliothèque complète ouvre les ${EXP.length}, les audios, les collections saisonnières et tout l’espace Notre couple.</p><ul><li>Nouvelles expériences chaque mois</li><li>Les expériences audio</li><li>Favoris, souvenirs, envies, Canari</li><li>Surprends-nous sans limite</li></ul><button class="btn" data-act="membre">Activer l’accès membre (prototype)</button></div>` : ''}
         </div>
         <aside class="exp-cote">
@@ -1754,7 +1881,7 @@ BA.canariExemples = [
   /* Installer l'application (PWA)                                   */
   let invitation = null;
   window.addEventListener('beforeinstallprompt', (ev) => { ev.preventDefault(); invitation = ev; if (location.hash.indexOf('/profil') > -1) vueProfil(); });
-  window.addEventListener('appinstalled', () => { invitation = null; toast('Besoin d\u2019Alchimie est sur votre écran d\u2019accueil.'); });
+  window.addEventListener('appinstalled', () => { invitation = null; mesure('App installée'); toast('Besoin d\u2019Alchimie est sur votre écran d\u2019accueil.'); });
   const installee = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
   const iOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
   const encadree = () => { try { return window.self !== window.top; } catch (e) { return true; } };
@@ -1770,6 +1897,19 @@ BA.canariExemples = [
 
   /* ------------------------------------------------------------ */
   /* Profil                                                          */
+  function blocMesure() {
+    const m = S.mesure || { actif: true, compteurs: {} };
+    const lignes = Object.entries(m.compteurs).filter(([k]) => !k.startsWith('Page')).sort((a, b) => b[1] - a[1]);
+    const pages = Object.entries(m.compteurs).filter(([k]) => k.startsWith('Page')).reduce((t, [, v]) => t + v, 0);
+    return `<div class="profil-bloc">
+      <h3>Ce que l\u2019app compte</h3>
+      <div class="bascule"><div><strong>${m.actif ? 'Compteurs activés' : 'Compteurs arrêtés'}</strong><div class="muted small">Quelles expériences sont ouvertes et terminées. Jamais vos prénoms, vos réponses ni vos souvenirs. Pour « Se désirer », seul le territoire est compté.</div></div><button class="${m.actif ? 'actif' : ''}" data-act="mesure-bascule" aria-label="Activer ou arrêter les compteurs"></button></div>
+      ${lignes.length ? `<ul class="compteurs">${lignes.map(([k, v]) => `<li><span>${esc(k)}</span><b>${v}</b></li>`).join('')}<li class="muted"><span>Écrans ouverts</span><b>${pages}</b></li></ul>` : '<p class="note">Rien n\u2019est encore compté.</p>'}
+      <p class="note">${MESURE_PLAUSIBLE ? 'Ces chiffres sont aussi envoyés, sans cookie ni identifiant, à notre outil de mesure.' : 'Aujourd\u2019hui, ces chiffres restent sur ce téléphone. Pendant la phase de test, vous pouvez les copier et nous les envoyer.'}</p>
+      <div class="actions"><button class="btn btn--secondaire btn--petit" data-act="mesure-copier">Copier mes chiffres</button><button class="btn btn--discret btn--petit" data-act="mesure-zero">Remettre à zéro</button></div>
+    </div>`;
+  }
+
   function vueProfil() {
     rendre(`
       <section class="hero"><div class="surtitre">Profil</div><h1>Votre espace.</h1><p>Deux prénoms, quelques préférences, et c’est tout ce qu’on sait de vous.</p></section>
@@ -1787,6 +1927,12 @@ BA.canariExemples = [
         <p class="note">Dans ce prototype, l’accès se bascule d’un geste. Dans le produit, ce sera un abonnement.</p>
       </div>
       ${blocInstaller()}
+      ${blocMesure()}
+      <div class="profil-bloc">
+        <h3>Si quelque chose ne va pas</h3>
+        <p class="muted small">Si l\u2019un de vous a peur de l\u2019autre, des numéros d\u2019aide gratuits et vérifiés.</p>
+        <div class="actions"><a class="btn btn--secondaire btn--petit" href="#/aide">Voir les numéros d\u2019aide</a></div>
+      </div>
       <div class="profil-bloc">
         <h3>Vos données</h3>
         <p class="muted small">Tout ce que vous écrivez ici reste sur cet appareil. Rien n’est envoyé nulle part. Dans le produit final, un couple pourra lier deux téléphones ; ce prototype en simule un seul, qu’on se passe.</p>
@@ -1801,8 +1947,9 @@ BA.canariExemples = [
     const e = exp(id); if (!e) return aller('/explorer');
     if (!accessible(e)) return aller('/experience/' + id);
     const etapes = e.etapes.concat([{ t: 'fin' }]);
-    const sess = { i: 0, sub: 0, passe: -1, rep: { A: {}, B: {} }, dev: { A: {}, B: {} }, choix: {}, secret: {}, opn: { A: {}, B: {} }, playlist: [], surprises: {}, questions: {}, vecue: false, tirages: {} };
+    const sess = { i: 0, sub: 0, passe: -1, rep: { A: {}, B: {} }, dev: { A: {}, B: {} }, choix: {}, secret: {}, opn: { A: {}, B: {} }, playlist: [], surprises: {}, questions: {}, vecue: false, tirages: {}, vus: {}, finFichier: null };
     const N = noms();
+    mesure('Expérience commencée', nomMesure(e));
 
     rendre(`<div class="jeu t-${e.territoire}">
       <div class="jeu__tete"><span class="titre">${esc(e.titre)}</span><button class="jeu__quitter" data-act="quitter" data-id="${e.id}">Quitter</button></div>
@@ -1873,8 +2020,8 @@ BA.canariExemples = [
       revelation: {
         html: (et) => `<div class="surtitre">Révélation</div><h2>Posez le téléphone entre vous.</h2><p class="corps muted">Touchez une réponse pour la dévoiler. Marquez celles qui vous ont surpris : on y reviendra.</p>
           <div class="revel">${et.questions.map((qid) => { const a = sess.rep.A[qid] || '…', b = sess.rep.B[qid] || '…'; const dA = sess.dev.A[qid], dB = sess.dev.B[qid]; return `<div><div class="revel__q">${esc(qTexte(qid))}</div><div class="revel__rep">
-            <div class="rep cache" data-j="devoiler"><small>${esc(N.A)}</small><div class="txt">${esc(a)}</div>${!et.sansDevine && dB ? `<div class="devine">${esc(N.B)} pensait : <b>${esc(dB)}</b></div>` : ''}</div>
-            <div class="rep cache" data-j="devoiler"><small>${esc(N.B)}</small><div class="txt">${esc(b)}</div>${!et.sansDevine && dA ? `<div class="devine">${esc(N.A)} pensait : <b>${esc(dA)}</b></div>` : ''}</div>
+            <div class="rep ${sess.vus[qid + 'A'] ? '' : 'cache'}" data-j="devoiler" data-cle="${qid}A"><small>${esc(N.A)}</small><div class="txt">${esc(a)}</div>${!et.sansDevine && dB ? `<div class="devine">${esc(N.B)} pensait : <b>${esc(dB)}</b></div>` : ''}</div>
+            <div class="rep ${sess.vus[qid + 'B'] ? '' : 'cache'}" data-j="devoiler" data-cle="${qid}B"><small>${esc(N.B)}</small><div class="txt">${esc(b)}</div>${!et.sansDevine && dA ? `<div class="devine">${esc(N.A)} pensait : <b>${esc(dA)}</b></div>` : ''}</div>
           </div><button class="puce surprise ${sess.surprises[qid] ? 'actif' : ''}" data-j="surprise" data-q="${qid}" style="margin-top:8px">${sess.surprises[qid] ? 'Ça nous a surpris' : 'Ça m’a surpris'}</button></div>`; }).join('')}</div>
           <div class="actions"><button class="btn" data-j="suivant">Continuer</button></div>`
       },
@@ -1929,7 +2076,7 @@ BA.canariExemples = [
         apres: () => { const t = $('#le-txt'); if (t) t.focus(); }
       },
       fin: {
-        html: () => { if (!sess.vecue) { sess.vecue = true; S.vecues.push({ id: e.id, date: new Date().toISOString() }); sauver(); } sess.fin = sess.fin || { souvenir: false, phrase: false, refaire: S.aFaire.includes(e.id), favori: S.favoris.includes(e.id), reponses: false }; const f = sess.fin; const aRep = Object.keys(sess.rep.A).length > 0; return `<div class="surtitre">C’est fini</div><h2>Vous voulez garder quelque chose de ce moment ?</h2>
+        html: () => { if (!sess.vecue) { sess.vecue = true; S.vecues.push({ id: e.id, date: new Date().toISOString() }); sauver(); mesure('Expérience terminée', nomMesure(e)); } sess.fin = sess.fin || { souvenir: false, phrase: false, refaire: S.aFaire.includes(e.id), favori: S.favoris.includes(e.id), reponses: false }; const f = sess.fin; const aRep = Object.keys(sess.rep.A).length > 0; return `<div class="surtitre">C’est fini</div><h2>Vous voulez garder quelque chose de ce moment ?</h2>
           <div class="fin-options">
             <button class="choix ${f.souvenir ? 'actif' : ''}" data-j="fin" data-k="souvenir"><b>Ajouter un souvenir</b><small>Une photo, une note, dans votre coffre.</small></button>
             <button class="choix ${f.phrase ? 'actif' : ''}" data-j="fin" data-k="phrase"><b>Écrire une phrase</b><small>Juste une, celle qui reste.</small></button>
@@ -1937,7 +2084,7 @@ BA.canariExemples = [
             <button class="choix ${f.favori ? 'actif' : ''}" data-j="fin" data-k="favori"><b>Ajouter aux favoris</b><small>Sous le coude.</small></button>
             ${aRep ? `<button class="choix ${f.reponses ? 'actif' : ''}" data-j="fin" data-k="reponses"><b>Garder nos réponses</b><small>Sinon, elles s’effacent en sortant.</small></button>` : ''}
           </div>
-          <div id="fin-form" ${f.souvenir || f.phrase ? '' : 'hidden'} style="margin-top:14px"><div class="champ"><textarea id="fin-txt" placeholder="${f.phrase && !f.souvenir ? 'La phrase.' : 'Ce que vous voulez vous rappeler de ce moment.'}">${esc(f.texte || '')}</textarea></div>${f.souvenir ? '<div class="champ"><label for="fin-photo">Une photo (facultatif)</label><input type="file" id="fin-photo" accept="image/*" /></div>' : ''}</div>
+          <div id="fin-form" ${f.souvenir || f.phrase ? '' : 'hidden'} style="margin-top:14px"><div class="champ"><textarea id="fin-txt" placeholder="${f.phrase && !f.souvenir ? 'La phrase.' : 'Ce que vous voulez vous rappeler de ce moment.'}">${esc(f.texte || '')}</textarea></div>${f.souvenir ? '<div class="champ"><label for="fin-photo">Une photo (facultatif)</label><input type="file" id="fin-photo" accept="image/*" />' + (sess.finFichier ? '<p class="note">Photo choisie : ' + esc(sess.finFichier.name) + '</p>' : '') + '</div>' : ''}</div>
           <div class="actions"><button class="btn" data-j="fin-ok">${f.souvenir || f.phrase || f.reponses || f.refaire !== S.aFaire.includes(e.id) || f.favori !== S.favoris.includes(e.id) ? 'Garder et fermer' : 'Ne rien garder'}</button></div>`; }
       }
     };
@@ -1962,13 +2109,14 @@ BA.canariExemples = [
       if (a.pos >= a.duree) { a.joue = false; a.pos = a.duree; if (lec) lec.classList.remove('joue'); }
     }
 
-    function lireFichier(input, cb) {
-      const f = input && input.files && input.files[0]; if (!f) return cb(null);
+    function lireFichier(source, cb) {
+      const f = (typeof File !== 'undefined' && source instanceof File) ? source : (source && source.files && source.files[0]); if (!f) return cb(null);
       const img = new Image(); const url = URL.createObjectURL(f);
       img.onload = () => { const max = 900; const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg', 0.78)); };
       img.onerror = () => cb(null); img.src = url;
     }
 
+    corps.addEventListener('change', (ev) => { if (ev.target.id === 'fin-photo' && ev.target.files[0]) sess.finFichier = ev.target.files[0]; });
     corps.addEventListener('click', (ev) => {
       const b = ev.target.closest('[data-j]'); if (!b) return;
       const j = b.dataset.j; const et = etapes[sess.i];
@@ -1980,19 +2128,19 @@ BA.canariExemples = [
       else if (j === 'piste') { const c = sess.chrono; const reste = et.pistes.filter((p) => !c.vues.includes(p)); const z = $('#piste'); if (!reste.length) { z.innerHTML = '<div class="piste piste--vide">Vous avez tout tiré. À vous de jouer, maintenant.</div>'; return; } const p = hasard(reste); c.vues.push(p); z.innerHTML = `<div class="piste">${esc(p)}</div>`; }
       else if (j === 'rep') { const v = $('#rep').value.trim(); sess.rep[et.qui][b.dataset.q] = v; if (b.dataset.dernier === '1') suivant(); else { sess.sub++; montrer(); } }
       else if (j === 'dev') { const v = $('#dev').value.trim(); sess.dev[et.qui][b.dataset.q] = v; if (b.dataset.dernier === '1') suivant(); else { sess.sub++; montrer(); } }
-      else if (j === 'devoiler') { b.classList.remove('cache'); }
-      else if (j === 'surprise') { sess.surprises[b.dataset.q] = !sess.surprises[b.dataset.q]; montrer(); }
+      else if (j === 'devoiler') { b.classList.remove('cache'); if (b.dataset.cle) sess.vus[b.dataset.cle] = true; }
+      else if (j === 'surprise') { sess.surprises[b.dataset.q] = !sess.surprises[b.dataset.q]; const y = corps.scrollTop; montrer(); corps.scrollTop = y; }
       else if (j === 'choix') { sess.choix[b.dataset.cle] = b.dataset.v; suivant(); }
       else if (j === 'secret') { const v = $('#sec').value.trim(); if (!v) { toast('Écris au moins quelques mots.'); return; } sess.secret[b.dataset.qui] = v; suivant(); }
       else if (j === 'sceller') { const ouvrir = new Date(); ouvrir.setFullYear(ouvrir.getFullYear() + 1); ['A', 'B'].forEach((q) => { if (sess.secret[q]) S.souvenirs.push({ id: uid(), expId: e.id, date: new Date().toISOString(), texte: sess.secret[q], par: q, scelle: { ouvrir: ouvrir.toISOString() } }); }); sauver(); toast('Deux lettres scellées, à ouvrir le ' + dateFr(ouvrir.toISOString())); suivant(); }
-      else if (j === 'opn') { sess.opn[et.qui][b.dataset.i] = b.dataset.v; montrer(); }
+      else if (j === 'opn') { sess.opn[et.qui][b.dataset.i] = b.dataset.v; const y = corps.scrollTop; montrer(); corps.scrollTop = y; }
       else if (j === 'pl') { sess.playlist[sess.sub] = { titre: $('#pl-t').value.trim(), artiste: $('#pl-a').value.trim() }; sess.sub++; montrer(); }
       else if (j === 'sv-garder') { $('#garde').hidden = false; $('#sv-txt').focus(); }
       else if (j === 'sv-ok') { const txt = $('#sv-txt').value.trim(); lireFichier($('#sv-photo'), (photo) => { if (!txt && !photo) { toast('Une phrase ou une photo, au moins.'); return; } S.souvenirs.push({ id: uid(), expId: e.id, date: new Date().toISOString(), texte: txt || et.pistes[sess.sub], photo: photo }); sauver(); toast('Gardé dans vos souvenirs.'); $('#garde').hidden = true; $('#sv-txt').value = ''; }); }
       else if (j === 'play') { const a = sess.audio; a.joue = !a.joue; nettoyer(); if (a.joue) chaque(() => { a.pos++; majAudio(); if (a.pos >= a.duree) nettoyer(); }, 1000); majAudio(); }
       else if (j === 'avancer') { const a = sess.audio; a.pos = Math.min(a.duree, a.pos + 60); majAudio(); }
       else if (j === 'le-add') { const v = $('#le-txt').value.trim(); if (!v) return; S.envies.push({ id: uid(), texte: v, type: 'Destination', par: $('#le-par').value, session: sess.id }); sauver(); $('#le-txt').value = ''; $('#le-liste').innerHTML = listeEnviesSession(et); $('#le-txt').focus(); }
-      else if (j === 'fin') { const k = b.dataset.k; const f = sess.fin; const t = $('#fin-txt'); if (t) f.texte = t.value; f[k] = !f[k]; montrer(); }
+      else if (j === 'fin') { const k = b.dataset.k; const f = sess.fin; const t = $('#fin-txt'); if (t) f.texte = t.value; f[k] = !f[k]; const y = corps.scrollTop; montrer(); corps.scrollTop = y; }
       else if (j === 'fin-ok') { const f = sess.fin; const t = $('#fin-txt'); const txt = t ? t.value.trim() : '';
         const finir = (photo) => {
           if ((f.souvenir || f.phrase) && (txt || photo)) S.souvenirs.push({ id: uid(), expId: e.id, date: new Date().toISOString(), texte: txt, photo: photo || null });
@@ -2003,7 +2151,7 @@ BA.canariExemples = [
           corps.innerHTML = `<div class="etape adieu"><div class="surtitre">À bientôt</div><h2>Et maintenant, retournez profiter de votre soirée.</h2><p>${f.souvenir || f.phrase || f.reponses ? 'C’est rangé dans votre espace.' : 'Rien n’a été gardé. C’est très bien aussi.'}</p><div class="actions" style="justify-content:center"><a class="btn" href="#/">Fermer</a></div></div>`;
           $('#prog').style.width = '100%';
         };
-        if (f.souvenir) lireFichier($('#fin-photo'), finir); else finir(null);
+        if (f.souvenir) lireFichier(sess.finFichier || $('#fin-photo'), finir); else finir(null);
       }
     });
 
@@ -2015,32 +2163,42 @@ BA.canariExemples = [
   document.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-act]'); if (!b) return;
     const a = b.dataset.act, id = b.dataset.id;
-    if (a === 'fav') { ev.preventDefault(); if (S.favoris.includes(id)) { S.favoris = S.favoris.filter((x) => x !== id); toast('Retiré des favoris'); } else { S.favoris.push(id); toast('Ajouté aux favoris'); } sauver(); route(); }
-    else if (a === 'afaire') { if (S.aFaire.includes(id)) { S.aFaire = S.aFaire.filter((x) => x !== id); toast('Retiré de votre liste'); } else { S.aFaire.push(id); toast('Ajouté à « À faire ensemble »'); } sauver(); route(); }
-    else if (a === 'membre') { S.membre = !S.membre; sauver(); toast(S.membre ? 'Accès membre activé (prototype)' : 'Retour à l’accès Découverte'); route(); }
+    if (a === 'fav') { ev.preventDefault(); if (S.favoris.includes(id)) { S.favoris = S.favoris.filter((x) => x !== id); toast('Retiré des favoris'); } else { S.favoris.push(id); toast('Ajouté aux favoris'); const ex = exp(id); if (ex) mesure('Favori ajouté', nomMesure(ex)); } sauver(); rerendre(route); }
+    else if (a === 'afaire') { if (S.aFaire.includes(id)) { S.aFaire = S.aFaire.filter((x) => x !== id); toast('Retiré de votre liste'); } else { S.aFaire.push(id); toast('Ajouté à « À faire ensemble »'); } sauver(); rerendre(route); }
+    else if (a === 'membre') { S.membre = !S.membre; sauver(); toast(S.membre ? 'Accès membre activé (prototype)' : 'Retour à l’accès Découverte'); rerendre(route); }
     else if (a === 'installer') { if (invitation) { invitation.prompt(); invitation.userChoice.finally(() => { invitation = null; vueProfil(); }); } }
     else if (a === 'filtres') { const f = $('#filtres'); f.hidden = !f.hidden; }
     else if (a === 'quitter') { demander('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.', 'Quitter', () => aller('/experience/' + id)); }
     else if (a === 'surp') { surprise[b.dataset.k] = surprise[b.dataset.k] === b.dataset.v ? '' : b.dataset.v; vueSurprends({}); }
-    else if (a === 'surp-go') { scenerieSurprise(); }
+    else if (a === 'majeurs') { S.majeurs = true; sauver(); mesure('Âge confirmé'); aller(S.onboarded ? '/' : '/bienvenue'); }
+    else if (a === 'sortie') { try { location.replace('https://www.google.com/search?q=m%C3%A9t%C3%A9o'); } catch (e) { aller('/'); } }
+    else if (a === 'mesure-bascule') { if (!S.mesure) S.mesure = { actif: true, compteurs: {} }; S.mesure.actif = !S.mesure.actif; sauver(); rerendre(vueProfil); }
+    else if (a === 'mesure-zero') { if (S.mesure) S.mesure.compteurs = {}; sauver(); toast('Compteurs remis à zéro'); rerendre(vueProfil); }
+    else if (a === 'mesure-copier') {
+      const c = (S.mesure && S.mesure.compteurs) || {};
+      const texte = 'Besoin d\u2019Alchimie, mes chiffres du ' + dateFr(new Date().toISOString()) + '\n' + Object.entries(c).sort((x, y) => y[1] - x[1]).map(([k, v]) => v + '  ' + k).join('\n');
+      const repli = () => { const t = document.createElement('textarea'); t.value = texte; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); toast('Chiffres copiés'); } catch (e) { toast('Copie impossible sur cet appareil'); } t.remove(); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texte).then(() => toast('Chiffres copiés, à coller dans WhatsApp'), repli); else repli();
+    }
+    else if (a === 'surp-go') { mesure('Surprends-nous'); scenerieSurprise(); }
     else if (a === 'onb-1') { onb.a = $('#onb-a').value.trim(); onb.b = $('#onb-b').value.trim(); if (!onb.a || !onb.b) { toast('Les deux prénoms, s’il vous plaît.'); return; } aller('/bienvenue?etape=2'); }
-    else if (a === 'onb-enf') { onb.enfants = b.dataset.v === 'oui'; vueOnboarding(2); const s = $('#onb-d'); if (s) s.value = onb.depuis; }
+    else if (a === 'onb-enf') { const d = $('#onb-d'); if (d) onb.depuis = d.value; onb.enfants = b.dataset.v === 'oui'; rerendre(() => vueOnboarding(2)); }
     else if (a === 'onb-2') { onb.depuis = $('#onb-d').value; aller('/bienvenue?etape=3'); }
-    else if (a === 'onb-gout') { const g = b.dataset.v; onb.gouts = onb.gouts.includes(g) ? onb.gouts.filter((x) => x !== g) : onb.gouts.concat([g]); vueOnboarding(3); }
-    else if (a === 'onb-3') { S.couple = { a: onb.a, b: onb.b, depuis: onb.depuis, enfants: onb.enfants, gouts: onb.gouts }; S.onboarded = true; sauver(); aller('/bienvenue?etape=4'); }
-    else if (a === 'pf-enf') { S.couple.enfants = b.dataset.v === 'oui'; sauver(); vueProfil(); }
-    else if (a === 'pf-gout') { const g = b.dataset.v; S.couple.gouts = S.couple.gouts.includes(g) ? S.couple.gouts.filter((x) => x !== g) : S.couple.gouts.concat([g]); sauver(); vueProfil(); }
+    else if (a === 'onb-gout') { const g = b.dataset.v; onb.gouts = onb.gouts.includes(g) ? onb.gouts.filter((x) => x !== g) : onb.gouts.concat([g]); rerendre(() => vueOnboarding(3)); }
+    else if (a === 'onb-3') { S.couple = { a: onb.a, b: onb.b, depuis: onb.depuis, enfants: onb.enfants, gouts: onb.gouts }; S.onboarded = true; sauver(); mesure('Accueil terminé'); aller('/bienvenue?etape=4'); }
+    else if (a === 'pf-enf') { S.couple.enfants = b.dataset.v === 'oui'; sauver(); rerendre(vueProfil); }
+    else if (a === 'pf-gout') { const g = b.dataset.v; S.couple.gouts = S.couple.gouts.includes(g) ? S.couple.gouts.filter((x) => x !== g) : S.couple.gouts.concat([g]); sauver(); rerendre(vueProfil); }
     else if (a === 'pf-sauver') { S.couple.a = $('#pf-a').value.trim() || S.couple.a; S.couple.b = $('#pf-b').value.trim() || S.couple.b; sauver(); toast('Enregistré'); vueProfil(); }
     else if (a === 'reset') { demander('Tout effacer ? Prénoms, favoris, souvenirs, Canari. Il n’y a pas de retour.', 'Tout effacer', () => { try { localStorage.removeItem(CLE); } catch (e) { /* stockage indisponible */ } S = defaut(); onb = { a: '', b: '', depuis: '', enfants: null, gouts: [] }; aller('/bienvenue'); }); }
-    else if (a === 'rep-suppr') { delete S.reponses[id]; sauver(); vueCouple('reponses'); }
-    else if (a === 'souv-suppr') { S.souvenirs = S.souvenirs.filter((s) => s.id !== id); sauver(); vueCouple('souvenirs'); }
-    else if (a === 'souv-ouvrir') { const s = S.souvenirs.find((x) => x.id === id); if (s) { delete s.scelle; sauver(); vueCouple('souvenirs'); } }
+    else if (a === 'rep-suppr') { delete S.reponses[id]; sauver(); rerendre(() => vueCouple('reponses')); }
+    else if (a === 'souv-suppr') { S.souvenirs = S.souvenirs.filter((s) => s.id !== id); sauver(); rerendre(() => vueCouple('souvenirs')); }
+    else if (a === 'souv-ouvrir') { const s = S.souvenirs.find((x) => x.id === id); if (s) { delete s.scelle; sauver(); rerendre(() => vueCouple('souvenirs')); } }
     else if (a === 'envie-add') { const v = $('#envie-txt').value.trim(); if (!v) return; S.envies.push({ id: uid(), texte: v, type: $('#envie-type').value, par: $('#envie-par').value }); sauver(); vueCouple('envies'); }
-    else if (a === 'envie-suppr') { S.envies = S.envies.filter((v) => v.id !== id); sauver(); vueCouple('envies'); }
+    else if (a === 'envie-suppr') { S.envies = S.envies.filter((v) => v.id !== id); sauver(); rerendre(() => vueCouple('envies')); }
     else if (a === 'canari-add') { const v = $('#canari-txt').value.trim(); if (!v) return; S.canari.push({ id: uid(), texte: v, par: $('#canari-par').value, date: new Date().toISOString(), tire: false }); sauver(); toast('Glissé dans le Canari'); vueCouple('canari'); }
     else if (a === 'canari-exemples') { BA.canariExemples.forEach((t, i) => S.canari.push({ id: uid(), texte: t, par: i % 2 ? 'B' : 'A', date: new Date().toISOString(), tire: false })); sauver(); vueCouple('canari'); }
     else if (a === 'canari-tirer') { const dedans = S.canari.filter((c) => !c.tire); if (!dedans.length) return; const c = hasard(dedans); $('#canari').classList.add('canari--tire'); b.disabled = true; plusTard(() => { c.tire = true; c.tireLe = new Date().toISOString(); sauver(); $('#idee').innerHTML = `<div class="idee">${esc(c.texte)}<small>glissée par ${esc(nom(c.par))}, le ${dateFr(c.date)}</small></div>`; $('#canari').classList.remove('canari--tire'); $('#canari').innerHTML = svgCanari(dedans.length - 1); b.disabled = dedans.length - 1 === 0; }, 1300); }
-    else if (a === 'canari-remettre') { const c = S.canari.find((x) => x.id === id); if (c) { c.tire = false; sauver(); vueCouple('canari'); } }
+    else if (a === 'canari-remettre') { const c = S.canari.find((x) => x.id === id); if (c) { c.tire = false; sauver(); rerendre(() => vueCouple('canari')); } }
   });
 
   /* ------------------------------------------------------------ */

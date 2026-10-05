@@ -35,8 +35,9 @@ https://claude.ai/artifact/5eHy4rUEf34gA143JSVyjW
   puis l'énergie, puis trois propositions. Jamais vide : si rien ne colle, la
   sélection s'élargit et le dit.
 - Explorer : cinq territoires, recherche, six filtres combinables, onze collections.
-- 33 expériences (6 Se retrouver, 6 Se redécouvrir, 6 Se dire, 6 Se désirer, 9 Vivre),
-  dont 4 audio et 3 marquées intimes.
+- 34 expériences (6 Se retrouver, 6 Se redécouvrir, 6 Se dire, 6 Se désirer, 10 Vivre),
+  dont 4 audio et 2 marquées intimes (recompté le 4/10 : la première version de ce
+  fichier disait 33, 9 et 3 par erreur de comptage).
 - Toutes sont jouables depuis « Commencer ». Les huit demandées ont une mécanique
   propre : deviner puis révéler, chrono avec pistes et sujets interdits, hôte et invité,
   playlist en huit pistes, écriture secrète puis règles puis révélation, coffre à
@@ -47,7 +48,7 @@ https://claude.ai/artifact/5eHy4rUEf34gA143JSVyjW
   à un an), réponses conservées sur choix explicite, envies, et le Canari.
 - Après chaque expérience : « Vous voulez garder quelque chose de ce moment ? » puis
   « Et maintenant, retournez profiter de votre soirée. »
-- Accès Découverte (12 expériences) et accès membre, à bascule dans le Profil.
+- Accès Découverte (14 expériences) et accès membre, à bascule dans le Profil.
 
 ## Décisions prises sans demander
 
@@ -76,7 +77,7 @@ https://claude.ai/artifact/5eHy4rUEf34gA143JSVyjW
   Noir prune #110A0D, dégradé braise #FF5A36 vers #F0326F, flamme #FFB547, blanc
   chaud #FFF1EA. Instrument Serif et Sans inchangées. Ancienne feuille sauvegardée
   dans `css/app.css.bak-palette-2026-10-04`.
-- `js/data.js` : les territoires, envies, filtres, collections et les 33 expériences.
+- `js/data.js` : les territoires, envies, filtres, collections et les 34 expériences.
   C'est là qu'on ajoute ou corrige un contenu.
 - `js/app.js` : état local, routeur, vues, moteur d'expériences.
 - `assets/` : favicon (16, 32, 48 px) et icônes 180 et 512 px dans la palette braise,
@@ -107,3 +108,24 @@ Pour revenir à deux lumières : remettre `<i class="l-flamme"></i><i class="l-f
 dans `#lumiere` (index.html).
 Code : bloc « Lumière vivante » en fin de `js/app.js`, styles `.lumiere` dans `css/app.css`.
 Pause quand l'app est cachée, fixe si l'appareil demande moins d'animations.
+
+## Âge, aide et mesure d'audience
+
+Ajoutés le 4 octobre 2026.
+
+- **Porte d'âge** : à la première ouverture, « Avez-vous tous les deux 18 ans ou plus ? ».
+  « Non » bloque tout l'accès, y compris par une adresse directe. Déclaratif, gardé sur
+  le téléphone. Les testeurs déjà installés la voient une fois.
+- **Si quelque chose ne va pas** (`#/aide`) : numéros vérifiés le 4/10 à la source
+  officielle (France : service-public.gouv.fr ; Belgique : ecouteviolencesconjugales.be ;
+  Togo : France Diplomatie, urgences seulement). Aucune ligne togolaise dédiée aux
+  violences n'a pu être vérifiée (sources divergentes : 8284, 1014, 8282…) : aucune
+  n'est affichée. Accessible depuis chaque fiche d'expérience et le Profil, même avant la
+  porte d'âge, jamais comptée, bouton « Quitter vite cette page ». **À revérifier tous les
+  six mois.**
+- **Mesure d'audience** : compteurs locaux (expériences commencées, terminées, favoris,
+  propositions vues, Surprends-nous). Jamais de texte saisi ; pour « Se désirer », seul
+  le territoire. Profil : « Ce que l'app compte », arrêt possible, « Copier mes chiffres »
+  pour les testeurs. Envoi vers Plausible prévu mais **désactivé** (`MESURE_PLAUSIBLE`
+  en tête de `js/app.js`) : créer le compte et vérifier l'exemption de consentement CNIL
+  avant de l'activer.

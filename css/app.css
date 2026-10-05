@@ -139,18 +139,25 @@ body.plein { padding-bottom: 0; }
 .carte:hover { transform: translateY(-2px); border-color: var(--ligne-2); background: var(--cacao-2); }
 .carte__terr { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teinte); }
 .carte__titre { font-family: var(--serif); font-size: 1.55rem; line-height: 1.05; }
-.carte__accroche { color: var(--fumee); font-size: 0.95rem; flex: 1; }
+.carte__accroche { color: var(--fumee); font-size: 0.95rem; }
+.carte__pied { margin-top: auto; }
 .carte__meta { font-size: 0.82rem; color: var(--fumee); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
 .carte__meta .pt { opacity: 0.6; }
-.carte__tags { position: absolute; right: 16px; top: 16px; display: flex; gap: 6px; }
+/* Territoire et étiquettes partagent une ligne qui passe à la ligne si la carte est étroite :
+   plus rien n'est posé en absolu par-dessus le texte. */
+.carte__haut { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; min-height: 22px; }
+.carte__tags { display: flex; flex-wrap: wrap; gap: 6px; position: relative; z-index: 2; }
 .tag { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; background: rgba(255,241,234,0.08); color: var(--fumee); }
 .tag--audio { color: var(--ambre); }
 .tag--intime { color: #FF7FA8; }
 .tag--decouverte { color: var(--flamme); }
 .fav {
-  position: absolute; right: 12px; bottom: 12px; width: 40px; height: 40px; border-radius: 50%;
+  position: relative; flex: none; width: 40px; height: 40px; margin: -8px -8px -8px 0; border-radius: 50%;
   display: grid; place-items: center; color: var(--fumee); z-index: 2;
 }
+/* Pied de carte : les infos à gauche, le favori au bout de la ligne, jamais par-dessus. */
+.carte__pied { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.carte__pied .carte__meta { min-width: 0; }
 .fav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .fav.actif { color: var(--ambre); }
 .fav.actif svg { fill: currentColor; }
@@ -456,6 +463,19 @@ body.plein { padding-bottom: 0; }
 .membre-encart p { color: var(--fumee); max-width: 48ch; }
 .membre-encart ul { list-style: none; margin: 14px 0; display: grid; gap: 6px; color: var(--creme-2); font-size: 0.95rem; }
 .membre-encart li::before { content: "·"; color: var(--ambre); margin-right: 8px; }
+
+/* ---------- Aide et compteurs ---------- */
+.aide-pays { display: grid; grid-template-columns: 1fr; gap: 0; margin-top: 18px; }
+@media (min-width: 900px) { .aide-pays { grid-template-columns: repeat(2, 1fr); gap: 0 14px; } }
+.aide-num { display: grid; grid-template-columns: 7.5em 1fr; gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--ligne); }
+.aide-num:first-of-type { border-top: 0; }
+.aide-num a { font-family: var(--serif); font-size: 1.7rem; line-height: 1; color: var(--creme); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aide-num span { color: var(--fumee); font-size: 0.92rem; }
+.lien-aide { color: var(--fumee); text-decoration: underline; text-underline-offset: 3px; }
+.lien-aide:hover { color: var(--creme); }
+.compteurs { list-style: none; margin: 14px 0 4px; display: flex; flex-direction: column; }
+.compteurs li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--ligne); font-size: 0.92rem; }
+.compteurs li b { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 /* ---------- Toast ---------- */
 .toast { position: fixed; left: 50%; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 18px; border-radius: 999px; background: var(--creme); color: var(--encre); font-weight: 500; font-size: 0.95rem; z-index: 200; box-shadow: var(--ombre); animation: entre .25s ease both; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
