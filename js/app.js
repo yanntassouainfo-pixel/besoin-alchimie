@@ -58,11 +58,21 @@
     membre: false,
     favoris: [], aFaire: [], vecues: [], souvenirs: [], reponses: {}, canari: [], envies: [],
     majeurs: false,
+    essais: [],
     mesure: { actif: true, compteurs: {} }
   });
   let S = charger();
   function charger() {
-    try { const j = localStorage.getItem(CLE); if (j) return Object.assign(defaut(), JSON.parse(j)); } catch (e) { /* stockage indisponible */ }
+    try {
+      const j = localStorage.getItem(CLE);
+      if (j) {
+        const brut = JSON.parse(j);
+        const s = Object.assign(defaut(), brut);
+        /* Installations d'avant le quota : les expériences déjà vécues comptent. */
+        if (!Array.isArray(brut.essais)) s.essais = [...new Set((s.vecues || []).map((v) => v.id))];
+        return s;
+      }
+    } catch (e) { /* stockage indisponible */ }
     return defaut();
   }
   function sauver() {
@@ -105,7 +115,16 @@
   const libelle = (liste, id) => { const x = liste.find((o) => o.id === id); return x ? x.nom : id; };
   const tempsCourt = (id) => { const x = BA.temps.find((o) => o.id === id); return x ? x.court : id; };
   const estMembre = () => S.membre;
-  const accessible = (e) => e.decouverte || estMembre();
+  /* Accès Découverte : QUOTA_DECOUVERTE expériences au choix, comptées au premier
+     « Commencer ». Une expérience déjà entamée reste rejouable. Au-delà, toute la
+     bibliothèque reste visible mais ne se lance plus sans l'accès membre.
+     Limite de prototype : le compte vit dans le navigateur ; effacer les données du
+     site le remet à zéro. Le vrai verrou viendra avec les comptes. */
+  const QUOTA_DECOUVERTE = 6;
+  const essais = () => (Array.isArray(S.essais) ? S.essais : []);
+  const dejaEssayee = (e) => essais().includes(e.id);
+  const essaisRestants = () => Math.max(0, QUOTA_DECOUVERTE - essais().length);
+  const accessible = (e) => estMembre() || dejaEssayee(e) || essaisRestants() > 0;
 
   function meta(e) {
     const lieu = e.lieux[0] === 'partout' ? 'N’importe où' : libelle(BA.lieux, e.lieux[0]).replace('À la maison', 'Maison');
@@ -181,9 +200,10 @@
     const tags = [];
     if (e.audio) tags.push('<span class="tag tag--audio">Audio</span>');
     if (e.intime) tags.push('<span class="tag tag--intime">Intime</span>');
-    if (e.decouverte && !estMembre()) tags.push('<span class="tag tag--decouverte">Découverte</span>');
+    const verrou = !accessible(e);
+    if (verrou) tags.push('<span class="tag tag--verrou"><svg viewBox="0 0 12 14" aria-hidden="true"><rect x="1.5" y="6" width="9" height="7" rx="1.5" fill="currentColor"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Membres</span>');
     const fav = S.favoris.includes(e.id);
-    return `<article class="carte t-${e.territoire}">
+    return `<article class="carte t-${e.territoire}${verrou ? ' carte--verrou' : ''}">
       <a class="carte__lien" href="#/experience/${e.id}" aria-label="${esc(e.titre)}"></a>
       <div class="carte__haut"><div class="carte__terr">${esc(terr(e.territoire).nom)}</div>${tags.length ? `<div class="carte__tags">${tags.join('')}</div>` : ''}</div>
       <h3 class="carte__titre">${esc(e.titre)}</h3>
@@ -525,10 +545,11 @@
           <div class="exp-bloc"><h3>Comment ça se passe</h3><p>${esc(e.mecanique)}. ${e.etapes.length > 1 ? e.etapes.length + ' temps, dévoilés un par un.' : 'Un seul temps, guidé.'} On ne vous montre pas tout à l’avance : la surprise fait partie de l’expérience.</p></div>
           ${e.intime ? '<div class="encart encart--intime"><strong>Chacun peut arrêter, modifier ou passer une consigne.</strong>À tout moment, sans avoir à l’expliquer. Rien ici ne mène quelque part où l’un de vous n’a pas envie d’aller.</div>' : ''}
           <p class="note"><a class="lien-aide" href="#/aide">Si votre relation vous fait peur</a></p>
-          ${!ok ? `<div class="membre-encart"><div class="surtitre">Bibliothèque complète</div><h2>Cette expérience fait partie de la bibliothèque complète.</h2><p>L’accès Découverte comprend ${EXP.filter((x) => x.decouverte).length} expériences. La bibliothèque complète ouvre les ${EXP.length}, les audios, les collections saisonnières et tout l’espace Notre couple.</p><ul><li>Nouvelles expériences chaque mois</li><li>Les expériences audio</li><li>Favoris, souvenirs, envies, Canari</li><li>Surprends-nous sans limite</li></ul><button class="btn" data-act="membre">Activer l’accès membre (prototype)</button></div>` : ''}
+          ${!ok ? `<div class="membre-encart"><div class="surtitre">Bibliothèque complète</div><h2>Vous avez utilisé vos ${QUOTA_DECOUVERTE} expériences offertes.</h2><p>Les ${EXP.length} expériences restent à portée de regard. Pour les vivre, la bibliothèque complète les ouvre toutes, avec les audios, les collections saisonnières et tout l’espace Notre couple. Celles que vous avez déjà commencées restent accessibles.</p><ul><li>Nouvelles expériences chaque mois</li><li>Les expériences audio</li><li>Favoris, souvenirs, envies, Canari</li><li>Surprends-nous sans limite</li></ul><button class="btn" data-act="membre">Activer l’accès membre (prototype)</button></div>` : ''}
         </div>
         <aside class="exp-cote">
-          ${ok ? `<a class="btn" href="#/jouer/${e.id}">Commencer l’expérience</a>` : '<button class="btn" disabled>Commencer l’expérience</button>'}
+          ${ok ? `<a class="btn" href="#/jouer/${e.id}">Commencer l’expérience</a>` : '<button class="btn" disabled>Réservée aux membres</button>'}
+          ${!estMembre() ? `<p class="quota">${!ok ? `Vos ${QUOTA_DECOUVERTE} expériences offertes sont utilisées.` : (dejaEssayee(e) ? 'Déjà commencée : elle reste ouverte pour vous.' : `Expérience offerte : il vous en reste ${essaisRestants()} sur ${QUOTA_DECOUVERTE}. La commencer en utilise une.`)}</p>` : ''}
           <button class="btn btn--secondaire" data-act="fav" data-id="${e.id}">${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}</button>
           <button class="btn btn--secondaire" data-act="afaire" data-id="${e.id}">${af ? 'Retirer de « À faire ensemble »' : 'Ajouter à « À faire ensemble »'}</button>
           ${colls.length ? `<div class="encart"><strong>Dans les collections</strong>${colls.map((c) => `<a href="#/collection/${c.id}" style="display:block;color:var(--ambre)">${esc(c.nom)}</a>`).join('')}</div>` : ''}
@@ -699,7 +720,7 @@
       </div>
       <div class="profil-bloc">
         <h3>Accès</h3>
-        <div class="bascule"><div><strong>${estMembre() ? 'Membre Besoin d’Alchimie' : 'Découverte'}</strong><div class="muted small">${estMembre() ? 'Toute la bibliothèque, les audios, les collections, l’espace Notre couple.' : EXP.filter((x) => x.decouverte).length + ' expériences ouvertes. Le reste s’ouvre avec l’accès membre.'}</div></div><button class="${estMembre() ? 'actif' : ''}" data-act="membre" aria-label="Basculer l’accès membre"></button></div>
+        <div class="bascule"><div><strong>${estMembre() ? 'Membre Besoin d’Alchimie' : 'Découverte'}</strong><div class="muted small">${estMembre() ? 'Toute la bibliothèque, les audios, les collections, l’espace Notre couple.' : (QUOTA_DECOUVERTE - essaisRestants()) + ' sur ' + QUOTA_DECOUVERTE + ' expériences offertes utilisées. Ensuite, la bibliothèque reste visible et s’ouvre avec l’accès membre.'}</div></div><button class="${estMembre() ? 'actif' : ''}" data-act="membre" aria-label="Basculer l’accès membre"></button></div>
         <p class="note">Dans ce prototype, l’accès se bascule d’un geste. Dans le produit, ce sera un abonnement.</p>
       </div>
       ${blocInstaller()}
@@ -722,6 +743,10 @@
   function jouer(id) {
     const e = exp(id); if (!e) return aller('/explorer');
     if (!accessible(e)) return aller('/experience/' + id);
+    if (!estMembre() && !dejaEssayee(e)) {
+      S.essais = essais().concat(e.id); sauver();
+      if (essaisRestants() === 0) mesure('Quota Découverte atteint');
+    }
     const etapes = e.etapes.concat([{ t: 'fin' }]);
     const sess = { i: 0, sub: 0, passe: -1, rep: { A: {}, B: {} }, dev: { A: {}, B: {} }, choix: {}, secret: {}, opn: { A: {}, B: {} }, playlist: [], surprises: {}, questions: {}, vecue: false, tirages: {}, vus: {}, finFichier: null };
     const N = noms();

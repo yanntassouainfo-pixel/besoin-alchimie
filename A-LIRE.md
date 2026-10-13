@@ -48,7 +48,13 @@ https://claude.ai/artifact/5eHy4rUEf34gA143JSVyjW
   à un an), réponses conservées sur choix explicite, envies, et le Canari.
 - Après chaque expérience : « Vous voulez garder quelque chose de ce moment ? » puis
   « Et maintenant, retournez profiter de votre soirée. »
-- Accès Découverte (14 expériences) et accès membre, à bascule dans le Profil.
+- Accès Découverte : **6 expériences au choix** (quota du 13/10/2026, `QUOTA_DECOUVERTE`
+  en tête de la règle d'accès dans `js/app.js`), comptées au premier « Commencer ».
+  Une expérience entamée reste rejouable. Quota atteint : toute la bibliothèque reste
+  visible (cadenas « Membres »), rien ne se lance sans l'accès membre. Le marqueur
+  `decouverte` de `data.js` ne sert plus. Limite : le compteur vit dans le navigateur,
+  effacer les données du site le remet à zéro ; le vrai verrou viendra avec les comptes.
+- Accès membre à bascule dans le Profil.
 
 ## Décisions prises sans demander
 
@@ -129,3 +135,12 @@ Ajoutés le 4 octobre 2026.
   pour les testeurs. Envoi vers Plausible prévu mais **désactivé** (`MESURE_PLAUSIBLE`
   en tête de `js/app.js`) : créer le compte et vérifier l'exemption de consentement CNIL
   avant de l'activer.
+
+## Aperçu au partage
+
+Ajouté le 13 octobre 2026. `index.html` porte les balises Open Graph et Twitter ;
+l'image est `assets/partage-1200x630.jpg` (geste de la Création d'Adam, main de femme à
+gauche, main d'homme à droite, logo et nom centrés pour survivre au recadrage carré de
+WhatsApp). Source et versions écartées : `../identite-besoin-alchimie/partage/`.
+**Changer `?v=` dans les trois balises image si l'image change**, puis forcer la relecture
+dans l'outil de débogage du partage de Meta.

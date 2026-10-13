@@ -1,2 +1,15 @@
+# Les robots des réseaux sociaux lisent la page pour fabriquer l'aperçu d'un lien partagé.
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: meta-externalagent
+User-agent: WhatsApp
+User-agent: Twitterbot
+User-agent: LinkedInBot
+User-agent: Slackbot
+User-agent: TelegramBot
+User-agent: Discordbot
+Allow: /
+
+# Moteurs de recherche : toujours pas d'indexation (prototype).
 User-agent: *
 Disallow: /

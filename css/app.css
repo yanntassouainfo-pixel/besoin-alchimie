@@ -151,6 +151,12 @@ body.plein { padding-bottom: 0; }
 .tag--audio { color: var(--ambre); }
 .tag--intime { color: #FF7FA8; }
 .tag--decouverte { color: var(--flamme); }
+.tag--verrou { color: var(--fumee); }
+.tag--verrou { display: inline-flex; align-items: center; gap: 5px; }
+.tag--verrou svg { width: 9px; height: 11px; }
+.carte--verrou { opacity: 0.6; }
+.carte--verrou:hover { opacity: 0.85; }
+.quota { font-size: 0.85rem; color: var(--fumee); margin: 4px 2px 6px; line-height: 1.45; }
 .fav {
   position: relative; flex: none; width: 40px; height: 40px; margin: -8px -8px -8px 0; border-radius: 50%;
   display: grid; place-items: center; color: var(--fumee); z-index: 2;
