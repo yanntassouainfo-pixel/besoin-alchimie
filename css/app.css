@@ -469,6 +469,18 @@ body.plein { padding-bottom: 0; }
 .membre-encart p { color: var(--fumee); max-width: 48ch; }
 .membre-encart ul { list-style: none; margin: 14px 0; display: grid; gap: 6px; color: var(--creme-2); font-size: 0.95rem; }
 .membre-encart li::before { content: "·"; color: var(--ambre); margin-right: 8px; }
+.cadeau { padding: 26px 24px; border-radius: var(--r); background: var(--cacao); border: 1px solid rgba(255, 181, 71, 0.45); margin-top: 20px; box-shadow: 0 0 40px rgba(255, 90, 54, 0.12); }
+.cadeau h3 { font-family: var(--serif); font-weight: 400; font-size: 1.8rem; line-height: 1.1; margin: 6px 0 10px; }
+.cadeau p { color: var(--creme-2); max-width: 48ch; }
+.cadeau__form { display: grid; gap: 12px; margin-top: 16px; max-width: 420px; }
+.cadeau input[type=email], .cadeau input[type=text] { width: 100%; padding: 14px 16px; border-radius: var(--r-s); background: var(--nuit-2); border: 1px solid var(--ligne-2); color: var(--creme); font: inherit; outline: none; }
+.cadeau input:focus { border-color: var(--ambre); }
+.cadeau__accord { display: flex; gap: 10px; align-items: flex-start; font-size: 0.9rem; color: var(--fumee); cursor: pointer; }
+.cadeau__accord input { margin-top: 3px; accent-color: var(--ambre); width: 18px; height: 18px; flex: none; }
+.cadeau__ligne { display: flex; gap: 10px; margin-top: 14px; max-width: 420px; }
+.cadeau__ligne input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.12em; }
+.lien-bouton { background: none; border: 0; padding: 0; font: inherit; color: var(--fumee); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lien-bouton:hover { color: var(--creme); }
 
 /* ---------- Aide et compteurs ---------- */
 .aide-pays { display: grid; grid-template-columns: 1fr; gap: 0; margin-top: 18px; }

@@ -121,9 +121,20 @@
      Limite de prototype : le compte vit dans le navigateur ; effacer les données du
      site le remet à zéro. Le vrai verrou viendra avec les comptes. */
   const QUOTA_DECOUVERTE = 6;
+  /* Inscription par mail (Brevo), au moment où le quota est atteint : deux
+     expériences de plus, offertes. Tant que FORMULAIRE_BREVO est vide, rien ne
+     s'affiche. Y coller l'adresse « action » du formulaire Brevo
+     (https://….sibforms.com/serve/…). Le mail de confirmation contient le lien
+     https://besoindalchimie.com/#/cadeau?c=CODE_CADEAU et le code en clair, pour
+     qui ouvre le mail ailleurs que dans l'app (iPhone : l'app installée a ses
+     propres données). Le code est partageable : c'est un geste, pas un verrou. */
+  const FORMULAIRE_BREVO = '';
+  const CODE_CADEAU = 'BRAISE';
+  const BONUS_CADEAU = 2;
+  const quota = () => QUOTA_DECOUVERTE + (S.cadeau ? BONUS_CADEAU : 0);
   const essais = () => (Array.isArray(S.essais) ? S.essais : []);
   const dejaEssayee = (e) => essais().includes(e.id);
-  const essaisRestants = () => Math.max(0, QUOTA_DECOUVERTE - essais().length);
+  const essaisRestants = () => Math.max(0, quota() - essais().length);
   const accessible = (e) => estMembre() || dejaEssayee(e) || essaisRestants() > 0;
 
   function meta(e) {
@@ -260,6 +271,8 @@
     if (annoncerDemenagement()) return;
     if (seg[0] === 'recevoir') return vueRecevoir(q);
     if (seg[0] === 'aide') { navActif(''); return vueAide(); }
+    if (seg[0] === 'confidentialite') { navActif(''); return vueConfidentialite(); }
+    if (seg[0] === 'cadeau') { appliquerCadeau(q.c, true); return; }
     if (!S.majeurs) { if (seg[0] !== 'age') { aller('/age'); return; } return vueAge(q.non === '1'); }
     if (!S.onboarded && seg[0] !== 'bienvenue') { aller('/bienvenue'); return; }
 
@@ -548,11 +561,12 @@
           <div class="exp-bloc"><h3>Comment ça se passe</h3><p>${esc(e.mecanique)}. ${e.etapes.length > 1 ? e.etapes.length + ' temps, dévoilés un par un.' : 'Un seul temps, guidé.'} On ne vous montre pas tout à l’avance : la surprise fait partie de l’expérience.</p></div>
           ${e.intime ? '<div class="encart encart--intime"><strong>Chacun peut arrêter, modifier ou passer une consigne.</strong>À tout moment, sans avoir à l’expliquer. Rien ici ne mène quelque part où l’un de vous n’a pas envie d’aller.</div>' : ''}
           <p class="note"><a class="lien-aide" href="#/aide">Si votre relation vous fait peur</a></p>
-          ${!ok ? `<div class="membre-encart"><div class="surtitre">Bibliothèque complète</div><h2>Vous avez utilisé vos ${QUOTA_DECOUVERTE} expériences offertes.</h2><p>Les ${EXP.length} expériences restent à portée de regard. Pour les vivre, la bibliothèque complète les ouvre toutes, avec les audios, les collections saisonnières et tout l’espace Notre couple. Celles que vous avez déjà commencées restent accessibles.</p><ul><li>Nouvelles expériences chaque mois</li><li>Les expériences audio</li><li>Favoris, souvenirs, envies, Canari</li><li>Surprends-nous sans limite</li></ul><button class="btn" data-act="membre">Activer l’accès membre (prototype)</button></div>` : ''}
+          ${!ok ? `<div class="membre-encart"><div class="surtitre">Bibliothèque complète</div><h2>Vous avez utilisé vos ${quota()} expériences offertes.</h2><p>Les ${EXP.length} expériences restent à portée de regard. Pour les vivre, la bibliothèque complète les ouvre toutes, avec les audios, les collections saisonnières et tout l’espace Notre couple. Celles que vous avez déjà commencées restent accessibles.</p><ul><li>Nouvelles expériences chaque mois</li><li>Les expériences audio</li><li>Favoris, souvenirs, envies, Canari</li><li>Surprends-nous sans limite</li></ul><button class="btn" data-act="membre">Activer l’accès membre (prototype)</button></div>` : ''}
         </div>
         <aside class="exp-cote">
           ${ok ? `<a class="btn" href="#/jouer/${e.id}">Commencer l’expérience</a>` : '<button class="btn" disabled>Réservée aux membres</button>'}
-          ${!estMembre() ? `<p class="quota">${!ok ? `Vos ${QUOTA_DECOUVERTE} expériences offertes sont utilisées.` : (dejaEssayee(e) ? 'Déjà commencée : elle reste ouverte pour vous.' : `Expérience offerte : il vous en reste ${essaisRestants()} sur ${QUOTA_DECOUVERTE}. La commencer en utilise une.`)}</p>` : ''}
+          ${!estMembre() ? `<p class="quota">${!ok ? `Vos ${quota()} expériences offertes sont utilisées.` : (dejaEssayee(e) ? 'Déjà commencée : elle reste ouverte pour vous.' : `Expérience offerte : il vous en reste ${essaisRestants()} sur ${quota()}. La commencer en utilise une.`)}</p>` : ''}
+          ${!ok ? blocCadeau() : ''}
           <button class="btn btn--secondaire" data-act="fav" data-id="${e.id}">${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}</button>
           <button class="btn btn--secondaire" data-act="afaire" data-id="${e.id}">${af ? 'Retirer de « À faire ensemble »' : 'Ajouter à « À faire ensemble »'}</button>
           ${colls.length ? `<div class="encart"><strong>Dans les collections</strong>${colls.map((c) => `<a href="#/collection/${c.id}" style="display:block;color:var(--ambre)">${esc(c.nom)}</a>`).join('')}</div>` : ''}
@@ -868,6 +882,44 @@
   }
 
   /* ------------------------------------------------------------ */
+  /* Le cadeau contre l'adresse mail                                 */
+  function blocCadeau() {
+    if (!FORMULAIRE_BREVO || S.cadeau) return '';
+    if (S.inscrit) return `<div class="cadeau"><div class="surtitre">Regardez votre boîte mail</div><h3>Le lien est parti.</h3>
+      <p>Touchez-le dans le mail : vos deux expériences s’ouvrent. S’il s’ouvre ailleurs que dans cette application, tapez plutôt le code écrit dans le mail.</p>
+      <div class="cadeau__ligne"><input type="text" id="cadeau-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Le code reçu" aria-label="Code reçu par mail" /><button class="btn btn--secondaire" data-act="cadeau-code">Valider</button></div>
+      <p class="note">Rien reçu ? Regardez dans les indésirables, ou <button class="lien-bouton" data-act="cadeau-refaire">changez d’adresse</button>.</p></div>`;
+    return `<div class="cadeau"><div class="surtitre">Un cadeau pour continuer</div><h3>Deux expériences de plus, offertes.</h3>
+      <p>Laissez votre adresse : on vous envoie un lien qui les ouvre tout de suite. Ensuite, de temps en temps, une idée pour vos soirées. Un clic suffit pour ne plus rien recevoir.</p>
+      <form class="cadeau__form" data-form="cadeau" novalidate>
+        <input type="email" id="cadeau-mail" autocomplete="email" inputmode="email" placeholder="votre@adresse.com" aria-label="Votre adresse mail" />
+        <label class="cadeau__accord"><input type="checkbox" id="cadeau-accord" /> <span>J’accepte de recevoir les mails de Besoin d’Alchimie.</span></label>
+        <button class="btn" type="submit">Recevoir mes deux expériences</button>
+      </form>
+      <p class="note">Votre adresse part chez Brevo, notre outil d’envoi, et nulle part ailleurs. Vos prénoms, vos réponses et vos souvenirs restent sur ce téléphone. <a class="lien-aide" href="#/confidentialite">Confidentialité</a></p></div>`;
+  }
+
+  function appliquerCadeau(code, depuisLien) {
+    const ok = String(code || '').trim().toUpperCase() === CODE_CADEAU;
+    if (ok && !S.cadeau) { S.cadeau = true; S.inscrit = true; sauver(); mesure('Cadeau mail', depuisLien ? 'lien' : 'code'); }
+    const msg = ok ? 'Deux expériences de plus, offertes. Belle soirée.' : 'Ce code ne correspond pas.';
+    if (depuisLien) { aller('/'); setTimeout(() => toast(msg), 500); }
+    else { toast(msg); if (ok) rerendre(route); }
+  }
+
+  function vueConfidentialite() {
+    rendre(`
+      <a class="retour" href="#/">← Retour</a>
+      <section class="hero"><div class="surtitre">Confidentialité</div><h1>Ce qui reste chez vous, ce qui part.</h1></section>
+      <div class="profil-bloc"><h3>Sur votre téléphone, et nulle part ailleurs</h3><p class="muted small">Vos prénoms, vos réponses, vos souvenirs et leurs photos, vos favoris, votre Canari : tout est rangé dans ce navigateur, sur cet appareil. Nous n’y avons pas accès. Effacer les données du site, ou utiliser « Effacer et recommencer » dans le Profil, les supprime.</p></div>
+      <div class="profil-bloc"><h3>Votre adresse mail, si vous nous la donnez</h3><p class="muted small">Elle est envoyée à Brevo, l’outil qui envoie nos mails, pour vous adresser le lien de vos deux expériences offertes, puis nos nouvelles. Elle n’est ni vendue ni partagée. Chaque mail contient un lien pour ne plus rien recevoir.</p></div>
+      <div class="profil-bloc"><h3>Ce que l’app compte</h3><p class="muted small">Des compteurs anonymes (quelles expériences sont ouvertes et terminées) restent sur ce téléphone. Vous pouvez les arrêter dans le Profil.</p></div>
+      <div class="profil-bloc"><h3>Les polices de caractères</h3><p class="muted small">Elles sont chargées depuis Google Fonts : votre navigateur contacte Google pour les afficher.</p></div>
+      <div class="profil-bloc"><h3>Vos droits</h3><p class="muted small">Pour consulter, corriger ou supprimer votre adresse : <a class="lien-aide" href="mailto:contact@besoindalchimie.com">contact@besoindalchimie.com</a>.</p></div>
+    `);
+  }
+
+  /* ------------------------------------------------------------ */
   /* Profil                                                          */
   function blocMesure() {
     const m = S.mesure || { actif: true, compteurs: {} };
@@ -895,7 +947,7 @@
       </div>
       <div class="profil-bloc">
         <h3>Accès</h3>
-        <div class="bascule"><div><strong>${estMembre() ? 'Membre Besoin d’Alchimie' : 'Découverte'}</strong><div class="muted small">${estMembre() ? 'Toute la bibliothèque, les audios, les collections, l’espace Notre couple.' : (QUOTA_DECOUVERTE - essaisRestants()) + ' sur ' + QUOTA_DECOUVERTE + ' expériences offertes utilisées. Ensuite, la bibliothèque reste visible et s’ouvre avec l’accès membre.'}</div></div><button class="${estMembre() ? 'actif' : ''}" data-act="membre" aria-label="Basculer l’accès membre"></button></div>
+        <div class="bascule"><div><strong>${estMembre() ? 'Membre Besoin d’Alchimie' : 'Découverte'}</strong><div class="muted small">${estMembre() ? 'Toute la bibliothèque, les audios, les collections, l’espace Notre couple.' : (quota() - essaisRestants()) + ' sur ' + quota() + ' expériences offertes utilisées. Ensuite, la bibliothèque reste visible et s’ouvre avec l’accès membre.'}</div></div><button class="${estMembre() ? 'actif' : ''}" data-act="membre" aria-label="Basculer l’accès membre"></button></div>
         <p class="note">Dans ce prototype, l’accès se bascule d’un geste. Dans le produit, ce sera un abonnement.</p>
       </div>
       ${blocInstaller()}
@@ -907,7 +959,8 @@
       </div>
       <div class="profil-bloc">
         <h3>Vos données</h3>
-        <p class="muted small">Tout ce que vous écrivez ici reste sur cet appareil. Rien n’est envoyé nulle part. Dans le produit final, un couple pourra lier deux téléphones ; ce prototype en simule un seul, qu’on se passe.</p>
+        <p class="muted small">Tout ce que vous écrivez ici reste sur cet appareil.${FORMULAIRE_BREVO ? ' Seule votre adresse mail, si vous nous la donnez, part chez Brevo pour vous écrire.' : ' Rien n’est envoyé nulle part.'} Dans le produit final, un couple pourra lier deux téléphones ; ce prototype en simule un seul, qu’on se passe.</p>
+        <p class="muted small">Une question, une idée : <a class="lien-aide" href="mailto:contact@besoindalchimie.com">contact@besoindalchimie.com</a>${FORMULAIRE_BREVO ? ' · <a class="lien-aide" href="#/confidentialite">Confidentialité</a>' : ''}</p>
         <div class="actions"><button class="btn btn--discret" data-act="reset">Effacer le prototype et recommencer</button></div>
       </div>
     `);
@@ -1148,6 +1201,8 @@
     else if (a === 'inv-copier') { const lien = location.origin + location.pathname; const ok = () => { toast('Lien copié'); fermerInvitation(); }; const repli = () => { const t = document.createElement('textarea'); t.value = lien; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('Copie impossible : ' + lien); } t.remove(); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lien).then(ok, repli); else repli(); }
     else if (a === 'emporter') { emporter(); }
     else if (a === 'importer') { importer(); }
+    else if (a === 'cadeau-code') { const c = $('#cadeau-code'); appliquerCadeau(c ? c.value : '', false); }
+    else if (a === 'cadeau-refaire') { S.inscrit = false; sauver(); rerendre(route); }
     else if (a === 'rester') { try { sessionStorage.setItem('ba-rester', '1'); } catch (e) { /* stockage indisponible */ } route(); }
     else if (a === 'filtres') { const f = $('#filtres'); f.hidden = !f.hidden; }
     else if (a === 'quitter') { demander('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.', 'Quitter', () => aller('/experience/' + id)); }
@@ -1181,6 +1236,23 @@
     else if (a === 'canari-exemples') { BA.canariExemples.forEach((t, i) => S.canari.push({ id: uid(), texte: t, par: i % 2 ? 'B' : 'A', date: new Date().toISOString(), tire: false })); sauver(); vueCouple('canari'); }
     else if (a === 'canari-tirer') { const dedans = S.canari.filter((c) => !c.tire); if (!dedans.length) return; const c = hasard(dedans); $('#canari').classList.add('canari--tire'); b.disabled = true; plusTard(() => { c.tire = true; c.tireLe = new Date().toISOString(); sauver(); $('#idee').innerHTML = `<div class="idee">${esc(c.texte)}<small>glissée par ${esc(nom(c.par))}, le ${dateFr(c.date)}</small></div>`; $('#canari').classList.remove('canari--tire'); $('#canari').innerHTML = svgCanari(dedans.length - 1); b.disabled = dedans.length - 1 === 0; }, 1300); }
     else if (a === 'canari-remettre') { const c = S.canari.find((x) => x.id === id); if (c) { c.tire = false; sauver(); rerendre(() => vueCouple('canari')); } }
+  });
+
+  /* Envoi de l'adresse à Brevo. Réponse opaque (no-cors) : on ne sait pas si
+     Brevo a accepté, on sait seulement que la demande est partie. La double
+     confirmation se fait par le mail lui-même. L'adresse n'est pas gardée ici. */
+  document.addEventListener('submit', (ev) => {
+    const f = ev.target.closest('[data-form="cadeau"]'); if (!f) return;
+    ev.preventDefault();
+    const mail = ($('#cadeau-mail') || {}).value ? $('#cadeau-mail').value.trim() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail)) { toast('Cette adresse semble incomplète.'); return; }
+    if (!$('#cadeau-accord').checked) { toast('Cochez la case pour recevoir le mail.'); return; }
+    const bt = f.querySelector('button[type=submit]'); bt.disabled = true; bt.textContent = 'Envoi…';
+    const d = new FormData();
+    d.append('EMAIL', mail); d.append('OPT_IN', '1'); d.append('email_address_check', ''); d.append('locale', 'fr');
+    fetch(FORMULAIRE_BREVO + (FORMULAIRE_BREVO.indexOf('?') > -1 ? '&' : '?') + 'isAjax=1', { method: 'POST', body: d, mode: 'no-cors' })
+      .then(() => { S.inscrit = true; sauver(); mesure('Inscription mail', 'envoyée'); rerendre(route); })
+      .catch(() => { bt.disabled = false; bt.textContent = 'Recevoir mes deux expériences'; toast('Pas de réseau. Réessayez dans un instant.'); });
   });
 
   /* ------------------------------------------------------------ */
