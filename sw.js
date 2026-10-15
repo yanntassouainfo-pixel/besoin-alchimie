@@ -5,13 +5,13 @@
    - Styles, scripts, icônes, polices : cache d'abord, rafraîchi en arrière-plan.
    Changer VERSION à chaque mise en ligne qui touche ces fichiers. */
 
-const VERSION = 'alchimie-v7';
+const VERSION = 'alchimie-v8';
 const COQUILLE = [
   './',
   './index.html',
-  './css/app.css?v=9',
+  './css/app.css?v=10',
   './js/data.js?v=4',
-  './js/app.js?v=11',
+  './js/app.js?v=12',
   './manifest.webmanifest',
   './assets/favicon-braise.ico',
   './assets/icone-braise-180.png',

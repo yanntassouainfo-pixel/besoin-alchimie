@@ -257,6 +257,7 @@
     (requete || '').split('&').filter(Boolean).forEach((p) => { const [k, v] = p.split('='); q[decodeURIComponent(k)] = decodeURIComponent(v || ''); });
     const seg = chemin.split('/').filter(Boolean);
 
+    if (annoncerDemenagement()) return;
     if (seg[0] === 'aide') { navActif(''); return vueAide(); }
     if (!S.majeurs) { if (seg[0] !== 'age') { aller('/age'); return; } return vueAge(q.non === '1'); }
     if (!S.onboarded && seg[0] !== 'bienvenue') { aller('/bienvenue'); return; }
@@ -428,6 +429,7 @@
         <div class="collections">${colls.map(carteCollection).join('')}</div>
       </section>
     `);
+    proposerInstallation();
   }
 
   function carteCollection(c) {
@@ -687,9 +689,91 @@
     if (installee()) return '<div class="profil-bloc"><h3>Application</h3><p class="muted small">Vous utilisez l\u2019application installée.</p></div>';
     let corps;
     if (invitation) corps = '<p class="muted small">Ajoutez Besoin d\u2019Alchimie à votre écran d\u2019accueil : il s\u2019ouvre en plein écran, comme une application, même sans connexion.</p><div class="actions"><button class="btn" data-act="installer">Installer l\u2019application</button></div>';
+    else if (dansAppli()) corps = '<p class="muted small">' + consigneAppli() + '</p>';
     else if (iOS()) corps = '<p class="muted small">Sur iPhone, ouvrez cette page dans Safari, touchez le bouton Partager (le carré avec une flèche vers le haut), puis « Sur l\u2019écran d\u2019accueil ».</p><p class="note">L\u2019application installée garde ses propres données : ce que vous avez enregistré dans Safari n\u2019y sera pas.</p>';
     else corps = '<p class="muted small">Dans le menu de votre navigateur, choisissez « Installer l\u2019application » ou « Ajouter à l\u2019écran d\u2019accueil ».</p>';
     return '<div class="profil-bloc"><h3>Sur votre écran d\u2019accueil</h3>' + corps + '</div>';
+  }
+
+  /* Invitation à installer, une fois que le couple a goûté à l'app.
+     Téléphone uniquement, sur l'accueil, jamais pendant une expérience ;
+     trois fois au plus, espacées de dix jours. Chaque navigateur installe
+     à sa façon : Chrome sur Android propose son propre bouton, Safari sur
+     iPhone passe par Partager, et les navigateurs intégrés (Instagram,
+     Facebook, TikTok) ne savent pas installer du tout. */
+  const mobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /macintosh/i.test(navigator.userAgent));
+  const nomAppli = () => { const u = navigator.userAgent; if (/Instagram/i.test(u)) return 'Instagram'; if (/FBAN|FBAV|FB_IAB/i.test(u)) return 'Facebook'; if (/TikTok|musical_ly|BytedanceWebview/i.test(u)) return 'TikTok'; if (/Snapchat/i.test(u)) return 'Snapchat'; if (/LinkedInApp/i.test(u)) return 'LinkedIn'; return ''; };
+  const dansAppli = () => !!nomAppli();
+  const icoPartager = '<svg class="ico-partager" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M8 10H5v11h14V10h-3"/></svg>';
+  const consigneAppli = () => `Vous lisez cette page dans ${nomAppli()}, qui ne permet pas d’installer une application. Ouvrez-la d’abord dans ${iOS() ? 'Safari' : 'Chrome'} : touchez <b>⋯</b> en haut à droite, puis « Ouvrir dans le navigateur ». Ou copiez le lien et collez-le dans ${iOS() ? 'Safari' : 'Chrome'}.`;
+
+  function proposerInstallation() {
+    if (encadree() || installee() || !mobile() || ancienneAdresse()) return;
+    if (!S.majeurs || !S.onboarded) return;
+    if (!S.premiereVisite) { S.premiereVisite = new Date().toISOString(); sauver(); }
+    const inv = S.invitationApp || { fois: 0, dernier: null };
+    if (inv.fois >= 3) return;
+    if (inv.dernier && Date.now() - new Date(inv.dernier).getTime() < 10 * 864e5) return;
+    const goute = essais().length > 0 || S.vecues.length > 0 || Date.now() - new Date(S.premiereVisite).getTime() > 864e5;
+    if (!goute) return;
+    plusTard(() => {
+      const h = (location.hash.replace(/^#/, '') || '/').split('?')[0];
+      if (h === '/' && !$('.dialogue')) ouvrirInvitation();
+    }, 3000);
+  }
+
+  function fermerInvitation() { $$('.dialogue--invite').forEach((d) => d.remove()); const v = $('#voile'); if (v) v.hidden = true; }
+
+  function ouvrirInvitation() {
+    const inv = S.invitationApp || { fois: 0, dernier: null };
+    S.invitationApp = { fois: inv.fois + 1, dernier: new Date().toISOString() }; sauver();
+    const cas = dansAppli() ? 'appli' : (invitation ? 'bouton' : (iOS() ? 'iphone' : 'menu'));
+    mesure('Invitation installer', cas);
+    const intro = '<p class="corps">Le soir où l’envie vient, pas besoin de retrouver le lien : la braise vous attend à côté de vos autres applications. Elle s’ouvre en plein écran, même sans réseau.</p>';
+    let corps, actions;
+    if (cas === 'appli') {
+      corps = `<p class="corps">${consigneAppli()}</p>`;
+      actions = '<button class="btn" data-act="inv-copier">Copier le lien</button>';
+    } else if (cas === 'bouton') {
+      corps = intro;
+      actions = '<button class="btn" data-act="inv-installer">Installer</button>';
+    } else if (cas === 'iphone') {
+      corps = intro + `<ol class="gestes"><li>Touchez ${icoPartager} <b>Partager</b>, en bas de Safari (ou dans le menu ⋯).</li><li>Choisissez « Sur l’écran d’accueil ». Faites défiler si vous ne le voyez pas.</li><li>Touchez « Ajouter ».</li></ol><p class="note">L’application installée repart de zéro : ce que vous avez enregistré ici reste dans Safari.</p>`;
+      actions = '<button class="btn" data-act="inv-fermer">C’est noté</button>';
+    } else {
+      corps = intro + '<ol class="gestes"><li>Touchez <b>⋮</b> en haut à droite du navigateur.</li><li>Choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».</li></ol>';
+      actions = '<button class="btn" data-act="inv-fermer">C’est noté</button>';
+    }
+    fermerInvitation();
+    const d = document.createElement('div');
+    d.className = 'dialogue dialogue--invite'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'inv-titre');
+    d.innerHTML = `<div class="invite__tete"><img src="assets/icone-braise-192.png" alt="" width="56" height="56" /><div><div class="surtitre">Sur votre téléphone</div><h2 id="inv-titre">Gardez Besoin d’Alchimie sur votre écran d’accueil.</h2></div></div>${corps}<div class="actions">${actions}<button class="btn btn--discret" data-act="inv-fermer">Plus tard</button></div>`;
+    const v = $('#voile'); if (v) { v.hidden = false; v.onclick = fermerInvitation; }
+    document.body.appendChild(d);
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Déménagement : l'ancienne adresse GitHub Pages renvoie vers le
+     domaine. Pas de redirection automatique : les souvenirs d'un couple
+     sont rangés dans le navigateur, adresse par adresse, et ne suivent
+     pas. Celui qui en a peut rester le temps de les noter. */
+  const NOUVELLE_ADRESSE = 'https://besoindalchimie.com/';
+  const ancienneAdresse = () => /github\.io$/i.test(location.hostname);
+  function annoncerDemenagement() {
+    if (!ancienneAdresse() || encadree()) return false;
+    try { if (sessionStorage.getItem('ba-rester')) return false; } catch (e) { /* stockage indisponible */ }
+    const garde = S.onboarded && (S.souvenirs.length + S.favoris.length + S.vecues.length + S.canari.length + S.aFaire.length) > 0;
+    rendre(`<div class="onb">${marqueSvg}
+      <div class="surtitre">Nous avons déménagé</div>
+      <h1>Besoin d’Alchimie vit maintenant sur besoindalchimie.com</h1>
+      <p class="corps">Même bibliothèque, mêmes expériences, nouvelle adresse.${installee() ? ' Cette icône mène à l’ancienne : installez la nouvelle depuis besoindalchimie.com, puis supprimez celle-ci.' : ' Pensez à mettre à jour le lien dans vos favoris.'}</p>
+      <div class="actions actions--col" style="max-width:360px">
+        <a class="btn" href="${NOUVELLE_ADRESSE}">Aller sur besoindalchimie.com</a>
+        ${garde ? '<button class="btn btn--discret" data-act="rester">Rester ici pour l’instant</button>' : ''}
+      </div>
+      ${garde ? '<p class="note">Vos souvenirs, vos favoris et votre Canari sont enregistrés dans ce téléphone, à l’ancienne adresse. Ils ne suivront pas : prenez le temps de noter ce qui compte avant de partir.</p>' : ''}
+    </div>`, true);
+    return true;
   }
 
   /* ------------------------------------------------------------ */
@@ -968,6 +1052,10 @@
     else if (a === 'afaire') { if (S.aFaire.includes(id)) { S.aFaire = S.aFaire.filter((x) => x !== id); toast('Retiré de votre liste'); } else { S.aFaire.push(id); toast('Ajouté à « À faire ensemble »'); } sauver(); rerendre(route); }
     else if (a === 'membre') { S.membre = !S.membre; sauver(); toast(S.membre ? 'Accès membre activé (prototype)' : 'Retour à l’accès Découverte'); rerendre(route); }
     else if (a === 'installer') { if (invitation) { invitation.prompt(); invitation.userChoice.finally(() => { invitation = null; vueProfil(); }); } }
+    else if (a === 'inv-installer') { fermerInvitation(); if (invitation) { invitation.prompt(); invitation.userChoice.then((c) => mesure('Invitation installer', c.outcome === 'accepted' ? 'acceptée' : 'refusée')).finally(() => { invitation = null; }); } }
+    else if (a === 'inv-fermer') { fermerInvitation(); }
+    else if (a === 'inv-copier') { const lien = location.origin + location.pathname; const ok = () => { toast('Lien copié'); fermerInvitation(); }; const repli = () => { const t = document.createElement('textarea'); t.value = lien; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('Copie impossible : ' + lien); } t.remove(); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lien).then(ok, repli); else repli(); }
+    else if (a === 'rester') { try { sessionStorage.setItem('ba-rester', '1'); } catch (e) { /* stockage indisponible */ } route(); }
     else if (a === 'filtres') { const f = $('#filtres'); f.hidden = !f.hidden; }
     else if (a === 'quitter') { demander('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.', 'Quitter', () => aller('/experience/' + id)); }
     else if (a === 'surp') { surprise[b.dataset.k] = surprise[b.dataset.k] === b.dataset.v ? '' : b.dataset.v; vueSurprends({}); }
@@ -986,7 +1074,7 @@
     else if (a === 'onb-enf') { const d = $('#onb-d'); if (d) onb.depuis = d.value; onb.enfants = b.dataset.v === 'oui'; rerendre(() => vueOnboarding(2)); }
     else if (a === 'onb-2') { onb.depuis = $('#onb-d').value; aller('/bienvenue?etape=3'); }
     else if (a === 'onb-gout') { const g = b.dataset.v; onb.gouts = onb.gouts.includes(g) ? onb.gouts.filter((x) => x !== g) : onb.gouts.concat([g]); rerendre(() => vueOnboarding(3)); }
-    else if (a === 'onb-3') { S.couple = { a: onb.a, b: onb.b, depuis: onb.depuis, enfants: onb.enfants, gouts: onb.gouts }; S.onboarded = true; sauver(); mesure('Accueil terminé'); aller('/bienvenue?etape=4'); }
+    else if (a === 'onb-3') { S.couple = { a: onb.a, b: onb.b, depuis: onb.depuis, enfants: onb.enfants, gouts: onb.gouts }; S.onboarded = true; if (!S.premiereVisite) S.premiereVisite = new Date().toISOString(); sauver(); mesure('Accueil terminé'); aller('/bienvenue?etape=4'); }
     else if (a === 'pf-enf') { S.couple.enfants = b.dataset.v === 'oui'; sauver(); rerendre(vueProfil); }
     else if (a === 'pf-gout') { const g = b.dataset.v; S.couple.gouts = S.couple.gouts.includes(g) ? S.couple.gouts.filter((x) => x !== g) : S.couple.gouts.concat([g]); sauver(); rerendre(vueProfil); }
     else if (a === 'pf-sauver') { S.couple.a = $('#pf-a').value.trim() || S.couple.a; S.couple.b = $('#pf-b').value.trim() || S.couple.b; sauver(); toast('Enregistré'); vueProfil(); }
