@@ -258,6 +258,7 @@
     const seg = chemin.split('/').filter(Boolean);
 
     if (annoncerDemenagement()) return;
+    if (seg[0] === 'recevoir') return vueRecevoir(q);
     if (seg[0] === 'aide') { navActif(''); return vueAide(); }
     if (!S.majeurs) { if (seg[0] !== 'age') { aller('/age'); return; } return vueAge(q.non === '1'); }
     if (!S.onboarded && seg[0] !== 'bienvenue') { aller('/bienvenue'); return; }
@@ -768,12 +769,102 @@
       <h1>Besoin d’Alchimie vit maintenant sur besoindalchimie.com</h1>
       <p class="corps">Même bibliothèque, mêmes expériences, nouvelle adresse.${installee() ? ' Cette icône mène à l’ancienne : installez la nouvelle depuis besoindalchimie.com, puis supprimez celle-ci.' : ' Pensez à mettre à jour le lien dans vos favoris.'}</p>
       <div class="actions actions--col" style="max-width:360px">
-        <a class="btn" href="${NOUVELLE_ADRESSE}">Aller sur besoindalchimie.com</a>
-        ${garde ? '<button class="btn btn--discret" data-act="rester">Rester ici pour l’instant</button>' : ''}
+        ${garde ? '<button class="btn" data-act="emporter">Emporter nos souvenirs</button><a class="btn btn--secondaire" href="' + NOUVELLE_ADRESSE + '">Y aller sans rien emporter</a><button class="btn btn--discret" data-act="rester">Rester ici pour l’instant</button>' : '<a class="btn" href="' + NOUVELLE_ADRESSE + '">Aller sur besoindalchimie.com</a>'}
       </div>
-      ${garde ? '<p class="note">Vos souvenirs, vos favoris et votre Canari sont enregistrés dans ce téléphone, à l’ancienne adresse. Ils ne suivront pas : prenez le temps de noter ce qui compte avant de partir.</p>' : ''}
+      ${garde ? '<p class="note">Vos souvenirs, vos favoris, vos réponses et votre Canari sont enregistrés dans ce téléphone, à l’ancienne adresse. « Emporter » les recopie sur la nouvelle, sur ce même téléphone. Rien ne passe par nos serveurs.</p>' : ''}
     </div>`, true);
     return true;
+  }
+
+  /* Transfert des données d'une adresse à l'autre, sur le même téléphone.
+     L'état voyage dans l'adresse de la nouvelle page, après le # : cette partie
+     ne quitte jamais le téléphone (le navigateur ne l'envoie pas au serveur).
+     Un onglet séparé aurait permis d'envoyer plus lourd, mais Instagram,
+     Facebook et les applications installées l'ouvrent souvent à la place de la
+     page de départ, et le transfert se perdait. Les photos suivent tant que
+     l'adresse reste sous PLAFOND caractères ; les autres restent à l'ancienne
+     adresse, et la nouvelle page le dit. Rien n'est effacé au départ. */
+  const PLAFOND = 600000;
+  const b64u = (octets) => { let bin = ''; for (let i = 0; i < octets.length; i += 0x8000) bin += String.fromCharCode.apply(null, octets.subarray(i, i + 0x8000)); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const deb64u = (t) => { const b = atob(t.replace(/-/g, '+').replace(/_/g, '/')); const o = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) o[i] = b.charCodeAt(i); return o; };
+  async function compresser(obj) {
+    const octets = new TextEncoder().encode(JSON.stringify(obj));
+    if (typeof CompressionStream === 'undefined') return 'j' + b64u(octets);
+    const flux = new Blob([octets]).stream().pipeThrough(new CompressionStream('gzip'));
+    return 'g' + b64u(new Uint8Array(await new Response(flux).arrayBuffer()));
+  }
+  async function decompresser(t) {
+    const octets = deb64u(t.slice(1));
+    if (t[0] === 'g') return JSON.parse(await new Response(new Blob([octets]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+    return JSON.parse(new TextDecoder().decode(octets));
+  }
+
+  async function emporter() {
+    mesure('Transfert', 'lancé');
+    const etat = JSON.parse(JSON.stringify(S)); delete etat.mesure; delete etat.invitationApp;
+    const avecPhoto = (etat.souvenirs || []).filter((sv) => sv && sv.photo);
+    const photos = avecPhoto.map((sv) => { const p = sv.photo; delete sv.photo; return p; });
+    etat._photosLaissees = photos.length;
+    let d = await compresser(etat);
+    for (let i = 0; i < avecPhoto.length; i++) {
+      avecPhoto[i].photo = photos[i]; etat._photosLaissees--;
+      const essai = await compresser(etat);
+      if (essai.length > PLAFOND) { delete avecPhoto[i].photo; etat._photosLaissees++; break; }
+      d = essai;
+    }
+    location.href = NOUVELLE_ADRESSE + '#/recevoir?d=' + d;
+  }
+
+  let aImporter = null;
+  function vueRecevoir(q) {
+    if (!q.d) return aller('/');
+    /* Les données ne restent pas dans l'historique du navigateur. */
+    try { history.replaceState(null, '', location.pathname + location.search + '#/recevoir'); } catch (e) { /* sans historique */ }
+    rendre(`<div class="onb">${marqueSvg}<h1>Un instant…</h1></div>`, true);
+    decompresser(q.d).then((etat) => confirmerImport(etat)).catch(() => rendre(`<div class="onb">${marqueSvg}<h1>Ce lien est abîmé.</h1><p class="corps">Retournez sur l’ancienne adresse et touchez à nouveau « Emporter nos souvenirs ».</p><div class="actions"><a class="btn btn--secondaire" href="#/">Ouvrir Besoin d’Alchimie</a></div></div>`, true));
+  }
+
+  function confirmerImport(etat) {
+    if (!etat || typeof etat !== 'object' || Array.isArray(etat)) return aller('/');
+    const L = (k) => (Array.isArray(etat[k]) ? etat[k].length : 0);
+    aImporter = etat;
+    const lignes = [[L('souvenirs'), 'souvenir', 'souvenirs'], [L('vecues'), 'expérience vécue', 'expériences vécues'], [L('favoris'), 'favori', 'favoris'], [L('aFaire'), 'idée « à faire ensemble »', 'idées « à faire ensemble »'], [L('canari'), 'mot dans le Canari', 'mots dans le Canari']].filter((x) => x[0] > 0);
+    const prenoms = etat.couple && etat.couple.a ? esc(etat.couple.a) + ' et ' + esc(etat.couple.b || '') : '';
+    rendre(`<div class="onb">${marqueSvg}
+      <div class="surtitre">Déménagement</div>
+      <h1>${prenoms ? prenoms + ', vos' : 'Vos'} souvenirs sont arrivés.</h1>
+      ${lignes.length ? `<ul class="gestes">${lignes.map((x) => `<li>${x[0]} ${x[0] > 1 ? x[2] : x[1]}</li>`).join('')}</ul>` : '<p class="corps">Rien à recopier : l’ancienne adresse était vide.</p>'}
+      ${etat._photosLaissees ? `<p class="note">${etat._photosLaissees} photo${etat._photosLaissees > 1 ? 's sont restées' : ' est restée'} sur l’ancienne adresse : trop lourdes pour le voyage. Le texte de ces souvenirs, lui, est arrivé.</p>` : ''}
+      <div class="actions actions--col" style="max-width:360px">
+        <button class="btn" data-act="importer">${S.onboarded ? 'Les ajouter à ce que vous avez ici' : 'Les ranger ici'}</button>
+        <a class="btn btn--discret" href="#/">Ne rien ajouter</a>
+      </div>
+    </div>`, true);
+  }
+
+  function importer() {
+    const e = aImporter; aImporter = null; if (!e) return aller('/');
+    const tab = (v) => (Array.isArray(v) ? v : []);
+    const parId = (a, b) => { const ids = new Set(a.map((x) => x && x.id)); return a.concat(tab(b).filter((x) => x && x.id && !ids.has(x.id))); };
+    const union = (a, b) => [...new Set(tab(a).concat(tab(b)))];
+    if (!S.onboarded) {
+      const garder = { mesure: S.mesure, invitationApp: S.invitationApp };
+      S = Object.assign(defaut(), e, garder);
+      delete S._photosLaissees;
+    } else {
+      S.souvenirs = parId(S.souvenirs, e.souvenirs);
+      S.canari = parId(S.canari, e.canari);
+      S.favoris = union(S.favoris, e.favoris); S.aFaire = union(S.aFaire, e.aFaire); S.essais = union(S.essais, e.essais);
+      const cle = (v) => v && (v.id + '|' + v.date);
+      const deja = new Set(S.vecues.map(cle));
+      S.vecues = S.vecues.concat(tab(e.vecues).filter((v) => v && !deja.has(cle(v))));
+      if (e.reponses && typeof e.reponses === 'object') S.reponses = Object.assign({}, e.reponses, S.reponses);
+      S.membre = S.membre || !!e.membre;
+    }
+    S.majeurs = S.majeurs || !!e.majeurs;
+    sauver(); mesure('Transfert', 'reçu');
+    toast('Vos souvenirs sont rangés ici.');
+    aller('/');
   }
 
   /* ------------------------------------------------------------ */
@@ -1055,6 +1146,8 @@
     else if (a === 'inv-installer') { fermerInvitation(); if (invitation) { invitation.prompt(); invitation.userChoice.then((c) => mesure('Invitation installer', c.outcome === 'accepted' ? 'acceptée' : 'refusée')).finally(() => { invitation = null; }); } }
     else if (a === 'inv-fermer') { fermerInvitation(); }
     else if (a === 'inv-copier') { const lien = location.origin + location.pathname; const ok = () => { toast('Lien copié'); fermerInvitation(); }; const repli = () => { const t = document.createElement('textarea'); t.value = lien; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('Copie impossible : ' + lien); } t.remove(); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lien).then(ok, repli); else repli(); }
+    else if (a === 'emporter') { emporter(); }
+    else if (a === 'importer') { importer(); }
     else if (a === 'rester') { try { sessionStorage.setItem('ba-rester', '1'); } catch (e) { /* stockage indisponible */ } route(); }
     else if (a === 'filtres') { const f = $('#filtres'); f.hidden = !f.hidden; }
     else if (a === 'quitter') { demander('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.', 'Quitter', () => aller('/experience/' + id)); }
