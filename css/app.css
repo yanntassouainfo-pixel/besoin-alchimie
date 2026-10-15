@@ -469,6 +469,18 @@ body.plein { padding-bottom: 0; }
 .membre-encart p { color: var(--fumee); max-width: 48ch; }
 .membre-encart ul { list-style: none; margin: 14px 0; display: grid; gap: 6px; color: var(--creme-2); font-size: 0.95rem; }
 .membre-encart li::before { content: "·"; color: var(--ambre); margin-right: 8px; }
+.grille--une { grid-template-columns: minmax(0, 420px); }
+.grille--une .carte--verrou { opacity: 1; }
+/* Page Membre : Découverte et Membre côte à côte. */
+.comparatif { border: 1px solid var(--ligne); border-radius: var(--r); overflow: hidden; margin: 8px 0 20px; }
+.cmp-ligne { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; padding: 14px 14px; border-top: 1px solid var(--ligne); font-size: 0.95rem; }
+.cmp-ligne:first-child { border-top: 0; }
+.cmp-ligne > span:not(:first-child) { text-align: center; }
+.cmp-ligne > span:last-child { color: var(--creme); }
+.cmp-tete { background: var(--cacao); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fumee); }
+.cmp-tete > span:last-child { color: var(--ambre); }
+.cmp-oui { color: var(--flamme); font-weight: 700; font-size: 1.1rem; }
+.cmp-non { color: var(--fumee-2); font-size: 0.85rem; }
 .cadeau { padding: 26px 24px; border-radius: var(--r); background: var(--cacao); border: 1px solid rgba(255, 181, 71, 0.45); margin-top: 20px; box-shadow: 0 0 40px rgba(255, 90, 54, 0.12); }
 .cadeau h3 { font-family: var(--serif); font-weight: 400; font-size: 1.8rem; line-height: 1.1; margin: 6px 0 10px; }
 .cadeau p { color: var(--creme-2); max-width: 48ch; }

@@ -74,7 +74,13 @@ BA.collections = [
   { id: 'rire', nom: 'On a besoin de rire', phrase: 'Pas de grande conversation ce soir.', regle: { ambiances: ['drole'] } },
   { id: 'sans-ecrans', nom: 'Une soirée sans écrans', phrase: 'Les téléphones dans un tiroir, et ce qui reste.', ids: ['on-debranche', 'un-slow-dans-la-cuisine', 'yeux-fermes-cuisine', 'tu-te-souviens', 'une-heure-rien-qua-nous', 'ecoute-moi'] },
   { id: 'anniversaire', nom: 'Pour notre anniversaire', phrase: 'Autre chose qu’un restaurant.', ids: ['rendez-vous-surprise', 'bande-originale', 'tu-te-souviens', 'lettre-dans-un-an', 'nuit-ailleurs', 'deux-inconnus'] },
-  { id: 'weekend-nous', nom: 'Un week-end rien que nous', phrase: 'Deux jours sans logistique.', regle: { temps: ['weekend', 'demi'] } }
+  { id: 'weekend-nous', nom: 'Un week-end rien que nous', phrase: 'Deux jours sans logistique.', regle: { temps: ['weekend', 'demi'] } },
+
+  /* Collections de saison : visibles seulement entre `saison.du` et `saison.au`
+     (mois-jour, l'intervalle peut passer le 31 décembre), ouvertes aux membres. */
+  { id: 'soirs-courts', nom: 'Quand les soirs raccourcissent', phrase: 'Il fait nuit avant le dîner. Autant en profiter à deux.',
+    saison: { du: '10-15', au: '12-15' }, membre: true,
+    ids: ['on-debranche', 'un-slow-dans-la-cuisine', 'yeux-fermes-cuisine', 'bande-originale', 'comment-tu-vas-toi', 'raconte-moi-encore', 'ce-que-tu-nas-pas-raconte'] }
 ];
 
 /* ------------------------------------------------------------------ */
@@ -85,6 +91,34 @@ BA.collections = [
    L'étape de fin est ajoutée automatiquement par le moteur.             */
 
 BA.experiences = [
+
+  /* ===================== NOUVEAUTÉS DE LA SEMAINE =====================
+     Une expérience par semaine, avec `parution` (AAAA-MM-JJ) : invisible avant
+     cette date, réservée aux membres ensuite. La plus récente s'affiche sur
+     l'accueil sous « Nouvelle cette semaine ». */
+  {
+    id: 'ce-que-tu-nas-pas-raconte', titre: 'Ce que tu n’as pas raconté',
+    accroche: 'Les petites choses de la semaine, celles qu’on garde pour soi.',
+    territoire: 'dire', temps: '30', lieux: ['maison', 'partout'], energies: ['fatigues', 'tranquilles'],
+    ambiances: ['tendre', 'leger'], budget: 'gratuit', mecanique: 'Écrire en secret, puis révéler',
+    parution: '2026-10-15',
+    ilVousFaut: 'Un seul téléphone, qu’on se passe, et la cuisine rangée.',
+    avant: 'Chaque semaine, il se passe des choses trop petites pour être racontées. Le collègue qui a pleuré dans l’ascenseur. Le vocal de ta mère, de là-bas, que tu n’as pas encore écouté. Ce soir, chacun en écrit trois, sans que l’autre voie. Puis vous les découvrez ensemble.',
+    etapes: [
+      { t: 'reponse', qui: 'A', secret: true, questions: [
+        { id: 'q1', q: 'Une chose qui t’a fait sourire cette semaine, et que tu as gardée pour toi.' },
+        { id: 'q2', q: 'Un moment où tu as pensé à moi sans me le dire. Où étais-tu ?' },
+        { id: 'q3', q: 'Une petite chose qui t’a pesé, trop petite pour en parler sur le moment.' }
+      ] },
+      { t: 'reponse', qui: 'B', secret: true, memeQuestions: true },
+      { t: 'revelation', questions: ['q1', 'q2', 'q3'] },
+      { t: 'conversation', titre: 'Ce qu’on garde', pistes: [
+        'Reprenez la deuxième réponse. Celui qui l’a écrite décrit l’endroit : la lumière, le bruit, l’heure.',
+        'La petite chose qui a pesé : est-ce qu’elle pèse encore, maintenant qu’elle est dite ?',
+        'La semaine prochaine, qu’est-ce que vous voulez vous raconter tout de suite, au lieu d’attendre ?'
+      ] }
+    ]
+  },
 
   /* ===================== SE RETROUVER ===================== */
   {

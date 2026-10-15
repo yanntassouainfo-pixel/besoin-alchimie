@@ -109,7 +109,10 @@
 
   /* ------------------------------------------------------------ */
   /* Accès aux données                                               */
-  const EXP = BA.experiences;
+  /* Date du jour sur ce téléphone, au format AAAA-MM-JJ. */
+  const aujourdhui = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  /* Une nouveauté de la semaine n'existe qu'à partir de sa date de parution. */
+  const EXP = BA.experiences.filter((e) => !e.parution || e.parution <= aujourdhui());
   const exp = (id) => EXP.find((e) => e.id === id);
   const terr = (id) => BA.territoires.find((t) => t.id === id);
   const libelle = (liste, id) => { const x = liste.find((o) => o.id === id); return x ? x.nom : id; };
@@ -129,13 +132,24 @@
      qui ouvre le mail ailleurs que dans l'app (iPhone : l'app installée a ses
      propres données). Le code est partageable : c'est un geste, pas un verrou. */
   const FORMULAIRE_BREVO = '';
+  /* Liste d'attente de l'accès membre : adresse « action » d'un second formulaire Brevo. */
+  const FORMULAIRE_ATTENTE = '';
   const CODE_CADEAU = 'BRAISE';
   const BONUS_CADEAU = 2;
   const quota = () => QUOTA_DECOUVERTE + (S.cadeau ? BONUS_CADEAU : 0);
   const essais = () => (Array.isArray(S.essais) ? S.essais : []);
   const dejaEssayee = (e) => essais().includes(e.id);
   const essaisRestants = () => Math.max(0, quota() - essais().length);
-  const accessible = (e) => estMembre() || dejaEssayee(e) || essaisRestants() > 0;
+  /* Réservées aux membres, hors quota : les audios guidés et les nouveautés de la semaine.
+     Une expérience déjà commencée reste ouverte. */
+  const reservee = (e) => !!(e.audio || e.parution);
+  const accessible = (e) => estMembre() || dejaEssayee(e) || (!reservee(e) && essaisRestants() > 0);
+  /* Mode test : la bascule membre n'apparaît que sur un téléphone passé par #/testeur. */
+  const testeur = () => { try { return localStorage.getItem('ba-testeur') === '1'; } catch (e) { return false; } };
+  /* Collections de saison : visibles seulement à leur période (mois-jour, peut passer le 31 décembre). */
+  const enSaison = (c) => { if (!c.saison) return true; const j = aujourdhui().slice(5); const { du, au } = c.saison; return du <= au ? (j >= du && j <= au) : (j >= du || j <= au); };
+  const collections = () => BA.collections.filter(enSaison);
+  const nouveaute = () => EXP.filter((e) => e.parution).sort((a, b) => (a.parution < b.parution ? 1 : -1))[0] || null;
 
   function meta(e) {
     const lieu = e.lieux[0] === 'partout' ? 'N’importe où' : libelle(BA.lieux, e.lieux[0]).replace('À la maison', 'Maison');
@@ -212,6 +226,7 @@
     if (e.audio) tags.push('<span class="tag tag--audio">Audio</span>');
     if (e.intime) tags.push('<span class="tag tag--intime">Intime</span>');
     const verrou = !accessible(e);
+    if (!verrou && reservee(e) && !estMembre() && !dejaEssayee(e)) tags.push('<span class="tag tag--verrou">Membres</span>');
     if (verrou) tags.push('<span class="tag tag--verrou"><svg viewBox="0 0 12 14" aria-hidden="true"><rect x="1.5" y="6" width="9" height="7" rx="1.5" fill="currentColor"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Membres</span>');
     const fav = S.favoris.includes(e.id);
     return `<article class="carte t-${e.territoire}${verrou ? ' carte--verrou' : ''}">
@@ -291,6 +306,8 @@
     if (r === 'surprends') { navActif('surprends'); return vueSurprends(q); }
     if (r === 'couple') { navActif('couple'); return vueCouple(q.o || 'vecues'); }
     if (r === 'profil') { navActif('profil'); return vueProfil(); }
+    if (r === 'membre') { navActif('profil'); return vueMembre(); }
+    if (r === 'testeur') { try { localStorage.setItem('ba-testeur', '1'); } catch (e) { /* stockage indisponible */ } toast('Mode test : la bascule membre est dans le Profil.'); return aller('/profil'); }
     aller('/');
   }
 
@@ -411,7 +428,7 @@
   function vueAccueil() {
     const dix = EXP.filter((e) => e.temps === '10');
     const aFaire = S.aFaire.map(exp).filter(Boolean).slice(0, 3);
-    const colls = melange(BA.collections).slice(0, 3);
+    const colls = collections().filter((c) => c.saison).concat(melange(collections().filter((c) => !c.saison))).slice(0, 3);
     rendre(`
       <section class="hero">
         <div class="surtitre">${salut()}${S.couple.a ? ', ' + esc(S.couple.a) + ' et ' + esc(S.couple.b) : ''}</div>
@@ -421,6 +438,7 @@
       <section class="section">
         <div class="envies">${BA.envies.map((v) => `<a class="envie${v.id === 'desires' ? ' envie--fort' : ''}" href="#/envie/${v.id}">${esc(v.texte)}</a>`).join('')}</div>
       </section>
+      ${blocNouveaute()}
       <section class="section">
         <div class="bandeau">
           <div class="bandeau__mark"><svg viewBox="0 0 100 100"><path d="M30 20 L50 55 L10 55 Z"/><path d="M50 45 L90 45 L70 80 Z"/></svg></div>
@@ -448,7 +466,7 @@
 
   function carteCollection(c) {
     const n = expsCollection(c).length;
-    return `<a class="collection" href="#/collection/${c.id}"><small>Collection</small><h3>${esc(c.nom)}</h3><p>${esc(c.phrase)}</p><span class="compte">${n} expérience${n > 1 ? 's' : ''}</span></a>`;
+    return `<a class="collection" href="#/collection/${c.id}"><small>${c.saison ? 'De saison · Membres' : 'Collection'}</small><h3>${esc(c.nom)}</h3><p>${esc(c.phrase)}</p><span class="compte">${n} expérience${n > 1 ? 's' : ''}</span></a>`;
   }
 
   /* ------------------------------------------------------------ */
@@ -508,7 +526,7 @@
         <p class="compte" style="margin-bottom:12px">${liste.length} expérience${liste.length > 1 ? 's' : ''}</p>
         ${grille(liste, 'On n’a rien trouvé avec cette combinaison. Enlevez un filtre et on devrait pouvoir vous surprendre.')}
       </section>
-      <section class="section"><div class="section__tete"><h2>Collections</h2></div><div class="collections">${BA.collections.map(carteCollection).join('')}</div></section>
+      <section class="section"><div class="section__tete"><h2>Collections</h2></div><div class="collections">${collections().map(carteCollection).join('')}</div></section>
     `);
     const inp = $('#recherche');
     let t;
@@ -524,10 +542,11 @@
   }
 
   function vueCollection(id) {
-    const c = BA.collections.find((x) => x.id === id); if (!c) return aller('/explorer');
+    const c = collections().find((x) => x.id === id); if (!c) return aller('/explorer');
+    const ferme = c.membre && !estMembre();
     rendre(`<a class="retour" href="#/explorer">← Explorer</a>
-      <section class="hero"><div class="surtitre">Collection</div><h1>${esc(c.nom)}</h1><p>${esc(c.phrase)}</p></section>
-      <section class="section">${grille(expsCollection(c))}</section>`);
+      <section class="hero"><div class="surtitre">${c.saison ? 'Collection de saison' : 'Collection'}</div><h1>${esc(c.nom)}</h1><p>${esc(c.phrase)}</p></section>
+      <section class="section">${ferme ? `<div class="membre-encart"><div class="surtitre">Réservée aux membres</div><h2>Les collections de saison font partie de l’accès membre.</h2><p>${expsCollection(c).length} expériences choisies pour cette période de l’année. Elles changent avec les saisons.</p><a class="btn" href="#/membre">Voir l’accès membre</a></div>` : grille(expsCollection(c))}</section>`);
   }
 
   function vueDixMinutes() {
@@ -544,7 +563,7 @@
     const t = terr(e.territoire);
     const fav = S.favoris.includes(e.id), af = S.aFaire.includes(e.id);
     const vecue = S.vecues.filter((v) => v.id === e.id).length;
-    const colls = BA.collections.filter((c) => expsCollection(c).some((x) => x.id === e.id)).slice(0, 3);
+    const colls = collections().filter((c) => expsCollection(c).some((x) => x.id === e.id)).slice(0, 3);
     const ok = accessible(e);
     rendre(`
       <a class="retour" href="#/territoire/${e.territoire}">← ${esc(t.nom)}</a>
@@ -561,12 +580,12 @@
           <div class="exp-bloc"><h3>Comment ça se passe</h3><p>${esc(e.mecanique)}. ${e.etapes.length > 1 ? e.etapes.length + ' temps, dévoilés un par un.' : 'Un seul temps, guidé.'} On ne vous montre pas tout à l’avance : la surprise fait partie de l’expérience.</p></div>
           ${e.intime ? '<div class="encart encart--intime"><strong>Chacun peut arrêter, modifier ou passer une consigne.</strong>À tout moment, sans avoir à l’expliquer. Rien ici ne mène quelque part où l’un de vous n’a pas envie d’aller.</div>' : ''}
           <p class="note"><a class="lien-aide" href="#/aide">Si votre relation vous fait peur</a></p>
-          ${!ok ? `<div class="membre-encart"><div class="surtitre">Bibliothèque complète</div><h2>Vous avez utilisé vos ${quota()} expériences offertes.</h2><p>Les ${EXP.length} expériences restent à portée de regard. Pour les vivre, la bibliothèque complète les ouvre toutes, avec les audios, les collections saisonnières et tout l’espace Notre couple. Celles que vous avez déjà commencées restent accessibles.</p><ul><li>Nouvelles expériences chaque mois</li><li>Les expériences audio</li><li>Favoris, souvenirs, envies, Canari</li><li>Surprends-nous sans limite</li></ul><button class="btn" data-act="membre">Activer l’accès membre (prototype)</button></div>` : ''}
+          ${!ok ? `<div class="membre-encart"><div class="surtitre">Accès membre</div><h2>${reservee(e) ? (e.audio ? 'Les audios guidés font partie de l’accès membre.' : 'La nouveauté de la semaine est réservée aux membres.') : `Vous avez utilisé vos ${quota()} expériences offertes.`}</h2><p>Les ${EXP.length} expériences restent à portée de regard. L’accès membre les ouvre toutes, et la bibliothèque grandit chaque semaine. Celles que vous avez déjà commencées restent ouvertes.</p><ul><li>Toute la bibliothèque, ${EXP.length} expériences aujourd’hui</li><li>Une nouvelle expérience chaque semaine</li><li>Les audios guidés</li><li>Les collections de saison</li></ul><a class="btn" href="#/membre">Voir l’accès membre</a></div>` : ''}
         </div>
         <aside class="exp-cote">
           ${ok ? `<a class="btn" href="#/jouer/${e.id}">Commencer l’expérience</a>` : '<button class="btn" disabled>Réservée aux membres</button>'}
-          ${!estMembre() ? `<p class="quota">${!ok ? `Vos ${quota()} expériences offertes sont utilisées.` : (dejaEssayee(e) ? 'Déjà commencée : elle reste ouverte pour vous.' : `Expérience offerte : il vous en reste ${essaisRestants()} sur ${quota()}. La commencer en utilise une.`)}</p>` : ''}
-          ${!ok ? blocCadeau() : ''}
+          ${!estMembre() ? `<p class="quota">${reservee(e) && !dejaEssayee(e) ? 'Expérience membre : elle ne compte pas dans vos expériences offertes.' : (!ok ? `Vos ${quota()} expériences offertes sont utilisées.` : (dejaEssayee(e) ? 'Déjà commencée : elle reste ouverte pour vous.' : `Expérience offerte : il vous en reste ${essaisRestants()} sur ${quota()}. La commencer en utilise une.`))}</p>` : ''}
+          ${!ok && !reservee(e) ? blocCadeau() : ''}
           <button class="btn btn--secondaire" data-act="fav" data-id="${e.id}">${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}</button>
           <button class="btn btn--secondaire" data-act="afaire" data-id="${e.id}">${af ? 'Retirer de « À faire ensemble »' : 'Ajouter à « À faire ensemble »'}</button>
           ${colls.length ? `<div class="encart"><strong>Dans les collections</strong>${colls.map((c) => `<a href="#/collection/${c.id}" style="display:block;color:var(--ambre)">${esc(c.nom)}</a>`).join('')}</div>` : ''}
@@ -920,6 +939,54 @@
   }
 
   /* ------------------------------------------------------------ */
+  /* Nouveauté de la semaine (accueil)                               */
+  function blocNouveaute() {
+    const e = nouveaute(); if (!e) return '';
+    const jours = Math.round((new Date(aujourdhui()) - new Date(e.parution)) / 864e5);
+    return `<section class="section">
+        <div class="section__tete"><div><h2>${jours < 7 ? 'Nouvelle cette semaine' : 'La dernière nouveauté'}</h2><p class="section__sous">${estMembre() ? 'Une expérience de plus chaque semaine, pour les membres.' : 'Chaque semaine, une expérience de plus pour les membres. <a class="lien-aide" href="#/membre">L’accès membre</a>'}</p></div></div>
+        <div class="grille grille--une">${carte(e)}</div>
+      </section>`;
+  }
+
+  /* ------------------------------------------------------------ */
+  /* L'accès membre : ce qu'il change, et la liste d'attente         */
+  function vueMembre() {
+    const nAudio = EXP.filter((e) => e.audio).length;
+    const nSaison = BA.collections.filter((c) => c.saison).length;
+    const oui = '<span class="cmp-oui" aria-label="Oui">✓</span>', non = '<span class="cmp-non">Non</span>';
+    const lignes = [
+      ['Expériences', quota() + ' au choix', 'Toutes (' + EXP.length + ')'],
+      ['Une nouvelle expérience chaque semaine', non, oui],
+      ['Les audios guidés' + (nAudio ? ' (' + nAudio + ')' : ''), non, oui],
+      ['Les collections de saison' + (nSaison ? '' : ''), non, oui],
+      ['Favoris, souvenirs, Canari, Surprends-nous', oui, oui],
+      ['Vos données restent sur votre téléphone', oui, oui]
+    ];
+    let attente;
+    if (estMembre()) attente = '<div class="profil-bloc"><h3>Vous êtes membre.</h3><p class="muted small">Toute la bibliothèque est ouverte sur ce téléphone.</p></div>';
+    else if (S.attente) attente = '<div class="cadeau"><div class="surtitre">C’est noté</div><h3>On vous écrit le jour de l’ouverture.</h3><p>Regardez votre boîte mail : un message vous demande de confirmer votre adresse.</p></div>';
+    else if (FORMULAIRE_ATTENTE) attente = `<div class="cadeau"><div class="surtitre">Bientôt</div><h3>L’accès membre ouvre bientôt.</h3><p>Laissez votre adresse : on vous écrit le jour de l’ouverture, avec le prix. Pas d’engagement, aucun paiement d’ici là.</p>
+        <form class="cadeau__form" data-form="attente" novalidate>
+          <input type="email" id="attente-mail" autocomplete="email" inputmode="email" placeholder="votre@adresse.com" aria-label="Votre adresse mail" />
+          <label class="cadeau__accord"><input type="checkbox" id="attente-accord" /> <span>J’accepte de recevoir les mails de Besoin d’Alchimie.</span></label>
+          <button class="btn" type="submit">Prévenez-moi à l’ouverture</button>
+        </form>
+        <p class="note">Votre adresse part chez Brevo, notre outil d’envoi, et nulle part ailleurs. <a class="lien-aide" href="#/confidentialite">Confidentialité</a></p></div>`;
+    else attente = '<div class="cadeau"><div class="surtitre">Bientôt</div><h3>L’accès membre ouvre bientôt.</h3><p>Pour être prévenus le jour de l’ouverture, écrivez-nous un mot : <a class="lien-aide" href="mailto:contact@besoindalchimie.com?subject=Pr%C3%A9venez-nous%20%C3%A0%20l%E2%80%99ouverture">contact@besoindalchimie.com</a>.</p></div>';
+    rendre(`
+      <a class="retour" href="#/">← Retour</a>
+      <section class="hero"><div class="surtitre">L’accès membre</div><h1>Vous ne tombez jamais à court.</h1>
+        <p>En Découverte, vous vivez ${quota()} soirées au choix. Ensuite, la bibliothèque reste là, mais elle ne s’ouvre plus. Membre, elle s’ouvre en entier et elle grandit : une expérience de plus chaque semaine.</p></section>
+      <div class="comparatif" role="table" aria-label="Découverte et accès membre">
+        <div class="cmp-ligne cmp-tete" role="row"><span role="columnheader"></span><span role="columnheader">Découverte</span><span role="columnheader">Membre</span></div>
+        ${lignes.map((l) => `<div class="cmp-ligne" role="row"><span role="rowheader">${l[0]}</span><span role="cell">${l[1]}</span><span role="cell">${l[2]}</span></div>`).join('')}
+      </div>
+      ${attente}
+    `);
+  }
+
+  /* ------------------------------------------------------------ */
   /* Profil                                                          */
   function blocMesure() {
     const m = S.mesure || { actif: true, compteurs: {} };
@@ -947,8 +1014,9 @@
       </div>
       <div class="profil-bloc">
         <h3>Accès</h3>
-        <div class="bascule"><div><strong>${estMembre() ? 'Membre Besoin d’Alchimie' : 'Découverte'}</strong><div class="muted small">${estMembre() ? 'Toute la bibliothèque, les audios, les collections, l’espace Notre couple.' : (quota() - essaisRestants()) + ' sur ' + quota() + ' expériences offertes utilisées. Ensuite, la bibliothèque reste visible et s’ouvre avec l’accès membre.'}</div></div><button class="${estMembre() ? 'actif' : ''}" data-act="membre" aria-label="Basculer l’accès membre"></button></div>
-        <p class="note">Dans ce prototype, l’accès se bascule d’un geste. Dans le produit, ce sera un abonnement.</p>
+        <div class="bascule"><div><strong>${estMembre() ? 'Membre Besoin d’Alchimie' : 'Découverte'}</strong><div class="muted small">${estMembre() ? 'Toute la bibliothèque, la nouveauté de chaque semaine, les audios guidés, les collections de saison.' : (quota() - essaisRestants()) + ' sur ' + quota() + ' expériences offertes utilisées.'}</div></div>${testeur() ? `<button class="${estMembre() ? 'actif' : ''}" data-act="membre" aria-label="Basculer l’accès membre (mode test)"></button>` : ''}</div>
+        ${testeur() ? '<p class="note">Mode test : la bascule ouvre ou ferme l’accès membre sur ce téléphone.</p>' : ''}
+        ${estMembre() ? '' : '<div class="actions"><a class="btn btn--secondaire btn--petit" href="#/membre">Voir ce que change l’accès membre</a></div>'}
       </div>
       ${blocInstaller()}
       ${blocMesure()}
@@ -1242,17 +1310,20 @@
      Brevo a accepté, on sait seulement que la demande est partie. La double
      confirmation se fait par le mail lui-même. L'adresse n'est pas gardée ici. */
   document.addEventListener('submit', (ev) => {
-    const f = ev.target.closest('[data-form="cadeau"]'); if (!f) return;
+    const f = ev.target.closest('[data-form="cadeau"], [data-form="attente"]'); if (!f) return;
     ev.preventDefault();
-    const mail = ($('#cadeau-mail') || {}).value ? $('#cadeau-mail').value.trim() : '';
+    const quoi = f.dataset.form;
+    const champ = $('#' + quoi + '-mail');
+    const mail = champ && champ.value ? champ.value.trim() : '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail)) { toast('Cette adresse semble incomplète.'); return; }
-    if (!$('#cadeau-accord').checked) { toast('Cochez la case pour recevoir le mail.'); return; }
-    const bt = f.querySelector('button[type=submit]'); bt.disabled = true; bt.textContent = 'Envoi…';
+    if (!$('#' + quoi + '-accord').checked) { toast('Cochez la case pour recevoir le mail.'); return; }
+    const bt = f.querySelector('button[type=submit]'); const texte = bt.textContent; bt.disabled = true; bt.textContent = 'Envoi…';
+    const cible = quoi === 'attente' ? FORMULAIRE_ATTENTE : FORMULAIRE_BREVO;
     const d = new FormData();
     d.append('EMAIL', mail); d.append('OPT_IN', '1'); d.append('email_address_check', ''); d.append('locale', 'fr');
-    fetch(FORMULAIRE_BREVO + (FORMULAIRE_BREVO.indexOf('?') > -1 ? '&' : '?') + 'isAjax=1', { method: 'POST', body: d, mode: 'no-cors' })
-      .then(() => { S.inscrit = true; sauver(); mesure('Inscription mail', 'envoyée'); rerendre(route); })
-      .catch(() => { bt.disabled = false; bt.textContent = 'Recevoir mes deux expériences'; toast('Pas de réseau. Réessayez dans un instant.'); });
+    fetch(cible + (cible.indexOf('?') > -1 ? '&' : '?') + 'isAjax=1', { method: 'POST', body: d, mode: 'no-cors' })
+      .then(() => { if (quoi === 'attente') S.attente = true; else S.inscrit = true; sauver(); mesure(quoi === 'attente' ? 'Liste d’attente membre' : 'Inscription mail', 'envoyée'); rerendre(route); })
+      .catch(() => { bt.disabled = false; bt.textContent = texte; toast('Pas de réseau. Réessayez dans un instant.'); });
   });
 
   /* ------------------------------------------------------------ */
