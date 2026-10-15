@@ -1219,6 +1219,18 @@
     requestAnimationFrame(image);
   })();
 
+  /* Ouverture « La formule » : le décor est dans index.html et le CSS joue
+     l'animation ; ici, on la retire à la fin, ou plus tôt si on touche l'écran. */
+  (function ouverture() {
+    const o = document.getElementById('ouverture'); if (!o) return;
+    if (document.documentElement.classList.contains('sans-ouverture')) { o.remove(); return; }
+    try { sessionStorage.setItem('ba-ouverture', '1'); } catch (e) { /* stockage indisponible */ }
+    const fin = () => { if (o.isConnected) o.remove(); };
+    o.addEventListener('click', () => { o.classList.add('ouverture--passe'); setTimeout(fin, 260); });
+    o.addEventListener('animationend', (ev) => { if (ev.target === o) fin(); });
+    setTimeout(fin, 2400);
+  })();
+
   window.addEventListener('hashchange', route);
   route();
 })();

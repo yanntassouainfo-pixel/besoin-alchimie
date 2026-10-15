@@ -24,6 +24,12 @@
 <meta name="twitter:image" content="https://yanntassouainfo-pixel.github.io/besoin-alchimie/assets/partage-1200x630.jpg?v=4" />
 <meta name="robots" content="noindex, nofollow" />
 <meta name="theme-color" content="#110A0D" />
+<script>
+  /* Ouverture « La formule » : une fois par session. Jamais sur la page d'aide
+     (sortie rapide), le transfert, l'ancienne adresse, ni si le téléphone
+     demande moins d'animations. Décidé ici, avant l'affichage, pour éviter tout éclair. */
+  try { if (sessionStorage.getItem('ba-ouverture') || /github\.io$/i.test(location.hostname) || /^#\/(aide|recevoir)/.test(location.hash) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) document.documentElement.classList.add('sans-ouverture'); } catch (e) { /* stockage indisponible */ }
+</script>
 <link rel="icon" href="assets/favicon-braise.ico" sizes="16x16 32x32 48x48" />
 <link rel="icon" href="assets/icone-braise-512.png" type="image/png" sizes="512x512" />
 <link rel="apple-touch-icon" href="assets/icone-braise-180.png" />
@@ -35,9 +41,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/app.css?v=11" />
+<link rel="stylesheet" href="css/app.css?v=12" />
 </head>
 <body>
+
+<div class="ouverture" id="ouverture" aria-hidden="true">
+  <svg class="ouverture__marque" viewBox="-6 -6 76 40">
+    <defs><linearGradient id="ouv-braise" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB547"/><stop offset=".5" stop-color="#FF5A36"/><stop offset="1" stop-color="#F0326F"/></linearGradient></defs>
+    <path class="ouv-g" d="M14 4 L26 24 L2 24 Z"/>
+    <path class="ouv-d" d="M38 4 L62 4 L50 24 Z"/>
+    <circle class="ouv-etincelle" cx="32" cy="14" r="2.6"/>
+  </svg>
+  <div class="ouverture__nom">Besoin d'Alchimie</div>
+</div>
 
 <div class="lumiere" id="lumiere" aria-hidden="true"><i class="l-braise"></i></div>
 
@@ -68,7 +84,7 @@
 <div id="voile" class="voile" hidden></div>
 
 <script src="js/data.js?v=4"></script>
-<script src="js/app.js?v=13"></script>
+<script src="js/app.js?v=14"></script>
 <script>
   /* Application installable : le service worker ne s'enregistre qu'en HTTPS (ou en local). */
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

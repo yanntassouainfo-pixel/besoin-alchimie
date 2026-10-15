@@ -510,3 +510,22 @@ hr.sep { border: 0; border-top: 1px solid var(--ligne); margin: 28px 0; }
 .compte { font-family: var(--serif); font-size: 1.1rem; color: var(--fumee); }
 .note { font-size: 0.85rem; color: var(--fumee-2); margin-top: 12px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* ---------- Ouverture « La formule » (environ 1,6 s, une fois par session) ----------
+   Les deux triangles se tracent, se rapprochent côte à côte (jamais superposés :
+   superposés, ils formeraient un hexagramme), une étincelle jaillit entre eux,
+   le nom apparaît, puis l'écran s'efface sur l'app. */
+.ouverture { position: fixed; inset: 0; z-index: 300; display: grid; place-content: center; justify-items: center; gap: 14px; background: var(--nuit); cursor: pointer; animation: ouv-part .4s ease 1.25s forwards; }
+.sans-ouverture .ouverture { display: none; }
+.ouverture--passe { animation: none; opacity: 0; transition: opacity .25s ease; }
+.ouverture__marque { width: 150px; overflow: visible; }
+.ouverture__marque path { fill: none; stroke: url(#ouv-braise); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 72; stroke-dashoffset: 72; filter: drop-shadow(0 0 6px rgba(240, 50, 111, 0.55)); }
+.ouv-g { transform: translateX(-12px); animation: ouv-trace .55s ease-out forwards, ouv-rapproche .45s cubic-bezier(.3, .7, .2, 1) .45s forwards; }
+.ouv-d { transform: translateX(12px); animation: ouv-trace .55s ease-out .08s forwards, ouv-rapproche .45s cubic-bezier(.3, .7, .2, 1) .45s forwards; }
+.ouv-etincelle { fill: #FFB547; transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0; filter: drop-shadow(0 0 4px #FFB547) drop-shadow(0 0 10px #F0326F); animation: ouv-eclat .55s ease-out .82s forwards; }
+.ouverture__nom { font-family: var(--serif); font-size: 1.9rem; letter-spacing: 0.01em; color: var(--creme); opacity: 0; animation: entre .45s ease .92s forwards; }
+@keyframes ouv-trace { to { stroke-dashoffset: 0; } }
+@keyframes ouv-rapproche { to { transform: translateX(0); } }
+@keyframes ouv-eclat { 0% { transform: scale(0); opacity: 0; } 35% { transform: scale(1.8); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes ouv-part { to { opacity: 0; visibility: hidden; } }
+
