@@ -131,9 +131,9 @@
      https://besoindalchimie.com/#/cadeau?c=CODE_CADEAU et le code en clair, pour
      qui ouvre le mail ailleurs que dans l'app (iPhone : l'app installée a ses
      propres données). Le code est partageable : c'est un geste, pas un verrou. */
-  const FORMULAIRE_BREVO = '';
+  const FORMULAIRE_BREVO = '';   /* prêt : formulaire « Cadeau : 2 expériences offertes » (liste n°3), voir BREVO_A-CONFIGURER.md */
   /* Liste d'attente de l'accès membre : adresse « action » d'un second formulaire Brevo. */
-  const FORMULAIRE_ATTENTE = '';
+  const FORMULAIRE_ATTENTE = 'https://22f1f212.sibforms.com/serve/MUIFAD-3oFNBsP2eXd7gN8XPxS1YN3sCrQHyWJssAOXOPE71unR5q4sARPXevJFo7mvjwuPwFq__Zks-D5NZQ7CyU55vSj3Hp2DL3tlaJOGSwhUx1FAYZdzOxYT0o5F6twZF-mEhbMxQ3-k0UqLsnxa2SD7McvnzE867anla-CRYDQYPtpjaDBBx_Tm7eQcOh92KHa5qtTKPq_ZoqQ==';   /* « Liste d'attente : accès membre » (liste n°4) */
   const CODE_CADEAU = 'BRAISE';
   const BONUS_CADEAU = 2;
   const quota = () => QUOTA_DECOUVERTE + (S.cadeau ? BONUS_CADEAU : 0);
@@ -965,7 +965,7 @@
     ];
     let attente;
     if (estMembre()) attente = '<div class="profil-bloc"><h3>Vous êtes membre.</h3><p class="muted small">Toute la bibliothèque est ouverte sur ce téléphone.</p></div>';
-    else if (S.attente) attente = '<div class="cadeau"><div class="surtitre">C’est noté</div><h3>On vous écrit le jour de l’ouverture.</h3><p>Regardez votre boîte mail : un message vous demande de confirmer votre adresse.</p></div>';
+    else if (S.attente) attente = '<div class="cadeau"><div class="surtitre">C’est noté</div><h3>On vous écrit le jour de l’ouverture.</h3><p>Votre adresse est sur la liste. Rien d’autre à faire d’ici là.</p></div>';
     else if (FORMULAIRE_ATTENTE) attente = `<div class="cadeau"><div class="surtitre">Bientôt</div><h3>L’accès membre ouvre bientôt.</h3><p>Laissez votre adresse : on vous écrit le jour de l’ouverture, avec le prix. Pas d’engagement, aucun paiement d’ici là.</p>
         <form class="cadeau__form" data-form="attente" novalidate>
           <input type="email" id="attente-mail" autocomplete="email" inputmode="email" placeholder="votre@adresse.com" aria-label="Votre adresse mail" />
@@ -1306,9 +1306,9 @@
     else if (a === 'canari-remettre') { const c = S.canari.find((x) => x.id === id); if (c) { c.tire = false; sauver(); rerendre(() => vueCouple('canari')); } }
   });
 
-  /* Envoi de l'adresse à Brevo. Réponse opaque (no-cors) : on ne sait pas si
-     Brevo a accepté, on sait seulement que la demande est partie. La double
-     confirmation se fait par le mail lui-même. L'adresse n'est pas gardée ici. */
+  /* Envoi de l'adresse à Brevo (formulaire hébergé, réponse JSON). L'adresse n'est pas
+     gardée sur le téléphone. Sans mail de confirmation tant que Brevo n'a pas activé
+     l'envoi transactionnel du compte (16/10/2026). */
   document.addEventListener('submit', (ev) => {
     const f = ev.target.closest('[data-form="cadeau"], [data-form="attente"]'); if (!f) return;
     ev.preventDefault();
@@ -1321,9 +1321,13 @@
     const cible = quoi === 'attente' ? FORMULAIRE_ATTENTE : FORMULAIRE_BREVO;
     const d = new FormData();
     d.append('EMAIL', mail); d.append('OPT_IN', '1'); d.append('email_address_check', ''); d.append('locale', 'fr');
-    fetch(cible + (cible.indexOf('?') > -1 ? '&' : '?') + 'isAjax=1', { method: 'POST', body: d, mode: 'no-cors' })
-      .then(() => { if (quoi === 'attente') S.attente = true; else S.inscrit = true; sauver(); mesure(quoi === 'attente' ? 'Liste d’attente membre' : 'Inscription mail', 'envoyée'); rerendre(route); })
-      .catch(() => { bt.disabled = false; bt.textContent = texte; toast('Pas de réseau. Réessayez dans un instant.'); });
+    const ok = () => { if (quoi === 'attente') S.attente = true; else S.inscrit = true; sauver(); mesure(quoi === 'attente' ? 'Liste d’attente membre' : 'Inscription mail', 'envoyée'); rerendre(route); };
+    const echec = (msg) => { bt.disabled = false; bt.textContent = texte; toast(msg || 'L’inscription n’est pas passée. Réessayez dans un instant.'); };
+    /* Brevo répond en JSON et autorise besoindalchimie.com : on lit la vraie réponse. */
+    fetch(cible + (cible.indexOf('?') > -1 ? '&' : '?') + 'isAjax=1', { method: 'POST', body: d })
+      .then((r) => r.json())
+      .then((j) => { if (j && j.success) ok(); else echec(j && j.errors && j.errors.EMAIL ? 'Cette adresse est refusée. Vérifiez-la.' : null); })
+      .catch(() => echec('Pas de réseau. Réessayez dans un instant.'));
   });
 
   /* ------------------------------------------------------------ */
