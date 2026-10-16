@@ -1375,7 +1375,7 @@
     const fin = () => { if (o.isConnected) o.remove(); };
     o.addEventListener('click', () => { o.classList.add('ouverture--passe'); setTimeout(fin, 260); });
     o.addEventListener('animationend', (ev) => { if (ev.target === o) fin(); });
-    setTimeout(fin, 2400);
+    setTimeout(fin, 3400);
   })();
 
   window.addEventListener('hashchange', route);
