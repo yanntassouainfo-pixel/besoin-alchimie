@@ -15,6 +15,32 @@
     .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
     .replace(/ ([?!:;»])/g, ' $1').replace(/« /g, '« ');
   const uid = () => Math.random().toString(36).slice(2, 10);
+  /* Ce qui arrive de l'extérieur (lien « Emporter », autre téléphone) est trié avant d'entrer :
+     seulement les rubriques connues, des identifiants simples, des photos qui sont des images. */
+  const RE_ID_LOCAL = /^[A-Za-z0-9_-]{1,64}$/;
+  const RE_PHOTO = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+  const RUBRIQUES = ['couple', 'favoris', 'aFaire', 'vecues', 'souvenirs', 'canari', 'envies', 'reponses', 'essais', 'membre', 'majeurs', 'onboarded'];
+  function assainir(d) {
+    const out = {};
+    if (!d || typeof d !== 'object' || Array.isArray(d)) return out;
+    const objet = (v) => v && typeof v === 'object' && !Array.isArray(v);
+    RUBRIQUES.forEach((k) => { if (k in d) out[k] = d[k]; });
+    ['membre', 'majeurs', 'onboarded'].forEach((k) => { if (k in out) out[k] = out[k] === true; });
+    ['favoris', 'aFaire', 'essais'].forEach((k) => { if (k in out) out[k] = Array.isArray(out[k]) ? out[k].filter((v) => typeof v === 'string' && RE_ID_LOCAL.test(v)) : []; });
+    if ('vecues' in out) out.vecues = Array.isArray(out.vecues) ? out.vecues.filter((v) => objet(v) && typeof v.id === 'string') : [];
+    ['souvenirs', 'canari', 'envies'].forEach((k) => {
+      if (!(k in out)) return;
+      out[k] = (Array.isArray(out[k]) ? out[k] : []).filter(objet).map((x) => {
+        const c = Object.assign({}, x);
+        if ('id' in c && !RE_ID_LOCAL.test(String(c.id))) c.id = uid();
+        if ('photo' in c && !(typeof c.photo === 'string' && RE_PHOTO.test(c.photo))) delete c.photo;
+        return c;
+      });
+    });
+    if ('couple' in out && !objet(out.couple)) delete out.couple;
+    if ('reponses' in out && !objet(out.reponses)) delete out.reponses;
+    return out;
+  }
   const hasard = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const melange = (arr) => arr.slice().sort(() => Math.random() - 0.5);
   const dateFr = (iso) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -664,7 +690,7 @@
       const types = ['Restaurant', 'Activité', 'Destination', 'À essayer'];
       corps = `<p class="muted">Restaurants, activités, destinations, choses que vous aimeriez essayer ensemble.</p>
         <div class="ajout"><input type="text" id="envie-txt" placeholder="Une envie" /><select id="envie-type">${types.map((t) => `<option>${t}</option>`).join('')}</select><select id="envie-par"><option value="A">${esc(nom('A'))}</option><option value="B">${esc(nom('B'))}</option></select><button class="btn btn--petit" data-act="envie-add">Ajouter</button></div>
-        <div class="liste" style="margin-top:16px">${S.envies.length ? S.envies.slice().reverse().map((v) => `<div class="ligne"><div class="ligne__corps"><div class="ligne__titre">${esc(v.texte)}</div><div class="ligne__sous">${esc(v.type)} · proposé par ${esc(nom(v.par))}</div></div><button class="btn btn--discret btn--petit" data-act="envie-suppr" data-id="${v.id}">Retirer</button></div>`).join('') : '<div class="vide">La liste est vide. Une envie à la fois.</div>'}</div>`;
+        <div class="liste" style="margin-top:16px">${S.envies.length ? S.envies.slice().reverse().map((v) => `<div class="ligne"><div class="ligne__corps"><div class="ligne__titre">${esc(v.texte)}</div><div class="ligne__sous">${esc(v.type)} · proposé par ${esc(nom(v.par))}</div></div><button class="btn btn--discret btn--petit" data-act="envie-suppr" data-id="${esc(v.id)}">Retirer</button></div>`).join('') : '<div class="vide">La liste est vide. Une envie à la fois.</div>'}</div>`;
     } else if (o === 'canari') {
       const dedans = S.canari.filter((c) => !c.tire), tirees = S.canari.filter((c) => c.tire).reverse();
       corps = `<p class="muted">Chacun y glisse une idée, discrètement. Quand vous ne savez pas quoi faire, vous en tirez une au hasard.</p>
@@ -674,7 +700,7 @@
         <div id="idee"></div>
         <div class="ajout"><input type="text" id="canari-txt" placeholder="J’aimerais qu’on…" /><select id="canari-par"><option value="A">${esc(nom('A'))}</option><option value="B">${esc(nom('B'))}</option></select><button class="btn btn--petit" data-act="canari-add">Glisser</button></div>
         <p class="note">L’autre ne voit pas ce que vous glissez. Il le découvrira au tirage.</p>
-        ${tirees.length ? `<hr class="sep"><h3 style="margin-bottom:10px">Déjà tirées</h3><div class="liste">${tirees.map((c) => `<div class="ligne"><div class="ligne__corps"><div class="ligne__titre">${esc(c.texte)}</div><div class="ligne__sous">glissée par ${esc(nom(c.par))}</div></div><button class="btn btn--discret btn--petit" data-act="canari-remettre" data-id="${c.id}">Remettre</button></div>`).join('')}</div>` : ''}`;
+        ${tirees.length ? `<hr class="sep"><h3 style="margin-bottom:10px">Déjà tirées</h3><div class="liste">${tirees.map((c) => `<div class="ligne"><div class="ligne__corps"><div class="ligne__titre">${esc(c.texte)}</div><div class="ligne__sous">glissée par ${esc(nom(c.par))}</div></div><button class="btn btn--discret btn--petit" data-act="canari-remettre" data-id="${esc(c.id)}">Remettre</button></div>`).join('')}</div>` : ''}`;
     }
     rendre(`
       <section class="hero"><div class="surtitre">Notre couple</div><h1>${esc(nom('A'))} et ${esc(nom('B'))}</h1><p>Pas de score, pas de diagnostic. Ce que vous avez vécu, ce que vous gardez, ce que vous voulez encore.</p></section>
@@ -706,11 +732,11 @@
     const e = exp(s.expId);
     const scelle = s.scelle && new Date(s.scelle.ouvrir) > new Date();
     return `<div class="souvenir ${scelle ? 'scelle' : ''}">
-      ${s.photo ? `<img src="${s.photo}" alt="" />` : ''}
+      ${s.photo && RE_PHOTO.test(s.photo) ? `<img src="${esc(s.photo)}" alt="" />` : ''}
       ${s.texte ? `<div class="txt">${esc(s.texte)}</div>` : ''}
       <div class="date">${e ? esc(e.titre) + ' · ' : ''}${dateFr(s.date)}${s.par ? ' · ' + esc(nom(s.par)) : ''}</div>
-      ${scelle ? `<div class="encart"><strong>Lettre scellée</strong>À ouvrir le ${dateFr(s.scelle.ouvrir)}. <button class="btn btn--discret btn--petit" data-act="souv-ouvrir" data-id="${s.id}">Ouvrir quand même (prototype)</button></div>` : ''}
-      <button class="btn btn--discret btn--petit" data-act="souv-suppr" data-id="${s.id}" style="align-self:flex-start">Retirer</button>
+      ${scelle ? `<div class="encart"><strong>Lettre scellée</strong>À ouvrir le ${dateFr(s.scelle.ouvrir)}. <button class="btn btn--discret btn--petit" data-act="souv-ouvrir" data-id="${esc(s.id)}">Ouvrir quand même (prototype)</button></div>` : ''}
+      <button class="btn btn--discret btn--petit" data-act="souv-suppr" data-id="${esc(s.id)}" style="align-self:flex-start">Retirer</button>
     </div>`;
   }
 
@@ -863,6 +889,7 @@
 
   function confirmerImport(etat) {
     if (!etat || typeof etat !== 'object' || Array.isArray(etat)) return aller('/');
+    etat = Object.assign(assainir(etat), { _photosLaissees: Math.max(0, Math.floor(Number(etat._photosLaissees) || 0)) });
     const L = (k) => (Array.isArray(etat[k]) ? etat[k].length : 0);
     aImporter = etat;
     const lignes = [[L('souvenirs'), 'souvenir', 'souvenirs'], [L('vecues'), 'expérience vécue', 'expériences vécues'], [L('favoris'), 'favori', 'favoris'], [L('aFaire'), 'idée « à faire ensemble »', 'idées « à faire ensemble »'], [L('canari'), 'mot dans le Canari', 'mots dans le Canari']].filter((x) => x[0] > 0);
@@ -1151,7 +1178,7 @@
         if (r.status === 410 || r.status === 404) { espaceFerme(); return false; }
         if (!r.ok) throw new Error('lecture ' + r.status);
         const distant = await r.json();
-        const docR = distant.data ? await lireDoc(lien.cle, distant.data) : null;
+        const docR = distant.data ? assainir(await lireDoc(lien.cle, distant.data)) : null;
         const avant = JSON.stringify(partage(S));
         const fusion = docR ? fusionner(lien.base || {}, partage(S), docR) : partage(S);
         appliquer(fusion);
@@ -1263,7 +1290,7 @@
       if (r.status === 404 || r.status === 410) return rendre(`<div class="onb">${marqueSvg}<h1>Cet espace n’existe plus.</h1><p class="corps">Il a été fermé depuis l’autre téléphone. Vous pouvez en créer un nouveau depuis Profil.</p><div class="actions"><a class="btn btn--secondaire" href="#/">Ouvrir Besoin d’Alchimie</a></div></div>`, true);
       if (!r.ok) throw new Error();
       const distant = await r.json();
-      const doc = distant.data ? await lireDoc(cible.cle, distant.data) : null;
+      const doc = distant.data ? assainir(await lireDoc(cible.cle, distant.data)) : null;
       const c = (doc && doc.couple) || {};
       cible.noms = { A: c.a || 'Le premier', B: c.b || 'Le second' };
       const local = S.onboarded && (S.souvenirs.length + S.favoris.length + S.vecues.length + S.canari.length) > 0;
