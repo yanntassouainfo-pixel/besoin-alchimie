@@ -481,6 +481,9 @@ body.plein { padding-bottom: 0; }
 .cmp-tete > span:last-child { color: var(--ambre); }
 .cmp-oui { color: var(--flamme); font-weight: 700; font-size: 1.1rem; }
 .cmp-non { color: var(--fumee-2); font-size: 0.85rem; }
+/* Deux téléphones : le QR code sur fond blanc, pour que tous les appareils photo le lisent. */
+.qr-carte { background: #fff; padding: 14px; border-radius: 18px; width: min(280px, 78vw); aspect-ratio: 1; margin: 8px auto 22px; display: grid; place-items: center; box-shadow: 0 10px 40px rgba(240, 50, 111, 0.25); }
+.qr-carte svg { width: 100%; height: auto; display: block; }
 .cadeau { padding: 26px 24px; border-radius: var(--r); background: var(--cacao); border: 1px solid rgba(255, 181, 71, 0.45); margin-top: 20px; box-shadow: 0 0 40px rgba(255, 90, 54, 0.12); }
 .cadeau h3 { font-family: var(--serif); font-weight: 400; font-size: 1.8rem; line-height: 1.1; margin: 6px 0 10px; }
 .cadeau p { color: var(--creme-2); max-width: 48ch; }
@@ -508,7 +511,8 @@ body.plein { padding-bottom: 0; }
 .compteurs li b { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 /* ---------- Toast ---------- */
-.toast { position: fixed; left: 50%; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 18px; border-radius: 999px; background: var(--creme); color: var(--encre); font-weight: 500; font-size: 0.95rem; z-index: 200; box-shadow: var(--ombre); animation: entre .25s ease both; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+/* Centré par marges automatiques (l'animation d'entrée utilise transform) ; les messages longs passent à la ligne. */
+.toast { position: fixed; left: 16px; right: 16px; margin: 0 auto; width: fit-content; max-width: 480px; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom)); padding: 12px 18px; border-radius: 22px; background: var(--creme); color: var(--encre); font-weight: 500; font-size: 0.95rem; line-height: 1.35; text-align: center; z-index: 200; box-shadow: var(--ombre); animation: entre .25s ease both; }
 @media (min-width: 900px) { .toast { bottom: 24px; } }
 body.plein .toast { bottom: 24px; }
 .voile { position: fixed; inset: 0; background: rgba(17,10,13,0.75); z-index: 150; }

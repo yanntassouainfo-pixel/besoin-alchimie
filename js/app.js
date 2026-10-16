@@ -46,7 +46,7 @@
     const el = document.createElement('div');
     el.className = 'toast'; el.textContent = msg;
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2400);
+    setTimeout(() => el.remove(), Math.max(2400, msg.length * 55));
   }
 
   /* ------------------------------------------------------------ */
@@ -75,10 +75,12 @@
     } catch (e) { /* stockage indisponible */ }
     return defaut();
   }
-  function sauver() {
+  function ecrireLocal() {
     try { localStorage.setItem(CLE, JSON.stringify(S)); }
     catch (e) { toast('Impossible d’enregistrer sur cet appareil.'); }
   }
+  /* Chaque enregistrement part aussi vers l'autre téléphone quand les deux sont reliés. */
+  function sauver() { ecrireLocal(); if (S.lien && !enSync) planifierSync(1500); }
   /* ------------------------------------------------------------ */
   /* Mesure d'audience                                               */
   /* L'app compte ce qui est ouvert et terminé, jamais ce qui est écrit : ni prénoms,
@@ -285,6 +287,7 @@
 
     if (annoncerDemenagement()) return;
     if (seg[0] === 'recevoir') return vueRecevoir(q);
+    if (seg[0] === 'rejoindre') return vueRejoindre(q);
     if (seg[0] === 'aide') { navActif(''); return vueAide(); }
     if (seg[0] === 'confidentialite') { navActif(''); return vueConfidentialite(); }
     if (seg[0] === 'cadeau') { appliquerCadeau(q.c, true); return; }
@@ -307,6 +310,7 @@
     if (r === 'couple') { navActif('couple'); return vueCouple(q.o || 'vecues'); }
     if (r === 'profil') { navActif('profil'); return vueProfil(); }
     if (r === 'membre') { navActif('profil'); return vueMembre(); }
+    if (r === 'relier') { navActif('profil'); return vueRelier(); }
     if (r === 'testeur') { try { localStorage.setItem('ba-testeur', '1'); } catch (e) { /* stockage indisponible */ } toast('Mode test : la bascule membre est dans le Profil.'); return aller('/profil'); }
     aller('/');
   }
@@ -932,6 +936,7 @@
       <section class="hero"><div class="surtitre">Confidentialité</div><h1>Ce qui reste chez vous, ce qui part.</h1></section>
       <div class="profil-bloc"><h3>Sur votre téléphone, et nulle part ailleurs</h3><p class="muted small">Vos prénoms, vos réponses, vos souvenirs et leurs photos, vos favoris, votre Canari : tout est rangé dans ce navigateur, sur cet appareil. Nous n’y avons pas accès. Effacer les données du site, ou utiliser « Effacer et recommencer » dans le Profil, les supprime.</p></div>
       <div class="profil-bloc"><h3>Votre adresse mail, si vous nous la donnez</h3><p class="muted small">Elle est envoyée à Brevo, l’outil qui envoie nos mails, pour vous adresser le lien de vos deux expériences offertes, puis nos nouvelles. Elle n’est ni vendue ni partagée. Chaque mail contient un lien pour ne plus rien recevoir.</p></div>
+      <div class="profil-bloc"><h3>Si vous reliez vos deux téléphones</h3><p class="muted small">Ce que vous partagez (prénoms, favoris, souvenirs et leurs photos, Canari, envies, réponses conservées) est chiffré sur votre téléphone avant de partir vers notre serveur, puis déchiffré sur l’autre téléphone. La clé ne quitte jamais vos téléphones : nous ne pouvons pas lire votre espace. Quitter l’espace commun le supprime de notre serveur.</p></div>
       <div class="profil-bloc"><h3>Ce que l’app compte</h3><p class="muted small">Des compteurs anonymes (quelles expériences sont ouvertes et terminées) restent sur ce téléphone. Vous pouvez les arrêter dans le Profil.</p></div>
       <div class="profil-bloc"><h3>Les polices de caractères</h3><p class="muted small">Elles sont chargées depuis Google Fonts : votre navigateur contacte Google pour les afficher.</p></div>
       <div class="profil-bloc"><h3>Vos droits</h3><p class="muted small">Pour consulter, corriger ou supprimer votre adresse : <a class="lien-aide" href="mailto:contact@besoindalchimie.com">contact@besoindalchimie.com</a>.</p></div>
@@ -960,6 +965,7 @@
       ['Une nouvelle expérience chaque semaine', non, oui],
       ['Les audios guidés' + (nAudio ? ' (' + nAudio + ')' : ''), non, oui],
       ['Les collections de saison' + (nSaison ? '' : ''), non, oui],
+      ['Vos deux téléphones reliés, chiffrés de bout en bout', non, oui],
       ['Favoris, souvenirs, Canari, Surprends-nous', oui, oui],
       ['Vos données restent sur votre téléphone', oui, oui]
     ];
@@ -984,6 +990,312 @@
       </div>
       ${attente}
     `);
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Deux téléphones, un même espace de couple (membres)             */
+  /* Chiffrement de bout en bout. La clé (32 octets) naît sur le premier téléphone et
+     voyage dans le lien ou le QR code après le # : elle n'atteint jamais le serveur.
+     Le serveur ne reçoit qu'un jeton tiré de la clé (HMAC) et des blocs AES-GCM.
+     Partagé : prénoms, favoris, à faire, expériences vécues, souvenirs et leurs photos,
+     Canari, envies, réponses conservées. Jamais une réponse secrète en cours : elles ne
+     vivent que dans la séance.
+     Fusion à trois voies (dernier état commun, ce téléphone, l'autre) : un ajout ou un
+     retrait fait d'un côté passe de l'autre, sans doublon ; si les deux ont changé la
+     même chose, la modification l'emporte sur la suppression. */
+  const API_ESPACES = 'https://api.besoindalchimie.com/v1';
+  const PARTAGE = ['couple', 'favoris', 'aFaire', 'vecues', 'souvenirs', 'canari', 'envies', 'reponses', 'essais', 'membre', 'majeurs', 'onboarded'];
+  const RE_ESPACE = /^[A-Za-z0-9_-]{22}$/, RE_CLE = /^[A-Za-z0-9_-]{43}$/;
+  const aleatoire = (n) => crypto.getRandomValues(new Uint8Array(n));
+  const jetons = {};
+  async function jetonDe(cle) {
+    if (jetons[cle]) return jetons[cle];
+    const k = await crypto.subtle.importKey('raw', deb64u(cle), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    jetons[cle] = b64u(new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode('besoin-alchimie/jeton-espace'))));
+    return jetons[cle];
+  }
+  async function cleAES(cle) { return crypto.subtle.importKey('raw', deb64u(cle), 'AES-GCM', false, ['encrypt', 'decrypt']); }
+  async function chiffrer(cle, octets) {
+    const iv = aleatoire(12);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await cleAES(cle), octets));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out;
+  }
+  async function dechiffrer(cle, octets) { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: octets.slice(0, 12) }, await cleAES(cle), octets.slice(12))); }
+  async function gz(octets, sens) {
+    if (typeof CompressionStream === 'undefined') return octets;
+    const flux = new Blob([octets]).stream().pipeThrough(sens ? new DecompressionStream('gzip') : new CompressionStream('gzip'));
+    return new Uint8Array(await new Response(flux).arrayBuffer());
+  }
+  /* Le document partagé : 1 octet de format (1 = gzip, 0 = brut), puis le JSON. */
+  async function ecrireDoc(cle, doc) {
+    const brut = new TextEncoder().encode(JSON.stringify(doc));
+    const zip = typeof CompressionStream !== 'undefined';
+    const corps = zip ? await gz(brut, false) : brut;
+    const tout = new Uint8Array(corps.length + 1); tout[0] = zip ? 1 : 0; tout.set(corps, 1);
+    return b64u(await chiffrer(cle, tout));
+  }
+  async function lireDoc(cle, data) {
+    const tout = await dechiffrer(cle, deb64u(data));
+    const corps = tout.slice(1);
+    return JSON.parse(new TextDecoder().decode(tout[0] === 1 ? await gz(corps, true) : corps));
+  }
+  async function appelEspace(methode, chemin, lien, corps, brut) {
+    const h = { Authorization: 'Bearer ' + (await jetonDe(lien.cle)) };
+    let body;
+    if (brut) { body = brut; h['Content-Type'] = 'application/octet-stream'; }
+    else if (corps) { body = JSON.stringify(corps); h['Content-Type'] = 'application/json'; }
+    return fetch(API_ESPACES + '/espaces/' + lien.id + chemin, { method: methode, headers: h, body, cache: 'no-store' });
+  }
+
+  /* ---------- Ce qui est partagé, et la fusion ---------- */
+  const copie = (x) => (x === undefined ? null : JSON.parse(JSON.stringify(x)));
+  function partage(s) {
+    const d = {};
+    PARTAGE.forEach((k) => { d[k] = copie(s[k]); });
+    if (Array.isArray(d.souvenirs)) d.souvenirs = d.souvenirs.map((x) => { const c = Object.assign({}, x); if (c.photo) { delete c.photo; c.p = 1; } return c; });
+    return d;
+  }
+  const cleElement = (x) => {
+    if (x === null || typeof x !== 'object') return 'v:' + JSON.stringify(x);
+    const ks = Object.keys(x);
+    if (x.id && x.date && ks.length === 2) return 'd:' + x.id + '|' + x.date;   // expériences vécues
+    if (x.id) return 'i:' + x.id;
+    return 'j:' + JSON.stringify(x);
+  };
+  const pareil = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  /* Règle commune aux listes et aux objets, élément par élément. */
+  function trancher(enB, enL, enR, vb, vl, vr) {
+    if (enL && enR) return { garde: true, v: !pareil(vl, vb) ? vl : vr };
+    if (enL) return enB && pareil(vl, vb) ? { garde: false } : { garde: true, v: vl };   // retiré de l'autre côté, sauf si modifié ici
+    if (enR) return enB && pareil(vr, vb) ? { garde: false } : { garde: true, v: vr };   // retiré ici, sauf si modifié de l'autre côté
+    return { garde: false };
+  }
+  function fusionListe(b, l, r) {
+    const mb = new Map((b || []).map((x) => [cleElement(x), x]));
+    const ml = new Map((l || []).map((x) => [cleElement(x), x]));
+    const mr = new Map((r || []).map((x) => [cleElement(x), x]));
+    const ordre = [...new Set([...mr.keys(), ...ml.keys()])];
+    const res = [];
+    ordre.forEach((k) => { const t = trancher(mb.has(k), ml.has(k), mr.has(k), mb.get(k), ml.get(k), mr.get(k)); if (t.garde) res.push(t.v); });
+    return res;
+  }
+  function fusionObjet(b, l, r) {
+    b = b || {}; l = l || {}; r = r || {};
+    const res = {};
+    [...new Set([...Object.keys(r), ...Object.keys(l)])].forEach((k) => { const t = trancher(k in b, k in l, k in r, b[k], l[k], r[k]); if (t.garde) res[k] = t.v; });
+    return res;
+  }
+  function fusionner(b, l, r) {
+    const out = {};
+    PARTAGE.forEach((k) => {
+      const vb = b ? b[k] : undefined, vl = l[k], vr = r[k];
+      if (typeof vl === 'boolean' || typeof vr === 'boolean') out[k] = !!vl || !!vr;
+      else if (Array.isArray(vl) || Array.isArray(vr)) out[k] = fusionListe(vb, vl, vr);
+      else if ((vl && typeof vl === 'object') || (vr && typeof vr === 'object')) out[k] = fusionObjet(vb, vl, vr);
+      else out[k] = vl !== undefined && vl !== null ? vl : vr;
+    });
+    return out;
+  }
+  function appliquer(doc) {
+    const photos = {};
+    (S.souvenirs || []).forEach((s) => { if (s.photo) photos[s.id] = s.photo; });
+    PARTAGE.forEach((k) => { if (doc[k] !== null && doc[k] !== undefined) S[k] = copie(doc[k]); });
+    S.souvenirs = (S.souvenirs || []).map((s) => { const c = Object.assign({}, s); if (photos[c.id]) c.photo = photos[c.id]; return c; });
+  }
+
+  /* ---------- Photos : chiffrées une par une ---------- */
+  const octetsDePhoto = (dataUrl) => { const b = atob(dataUrl.split(',')[1] || ''); const o = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) o[i] = b.charCodeAt(i); return o; };
+  const photoDeOctets = (o) => { let s = ''; for (let i = 0; i < o.length; i += 0x8000) s += String.fromCharCode.apply(null, o.subarray(i, i + 0x8000)); return 'data:image/jpeg;base64,' + btoa(s); };
+  async function envoyerPhotos(lien) {
+    lien.photos = Array.isArray(lien.photos) ? lien.photos : [];
+    for (const s of S.souvenirs || []) {
+      if (!s.photo || lien.photos.includes(s.id)) continue;
+      const r = await appelEspace('PUT', '/photos/' + s.id, lien, null, await chiffrer(lien.cle, octetsDePhoto(s.photo)));
+      if (r.ok) lien.photos.push(s.id);
+    }
+  }
+  async function recupererPhotos(lien) {
+    lien.photos = Array.isArray(lien.photos) ? lien.photos : [];
+    let nouvelles = 0;
+    for (const s of S.souvenirs || []) {
+      if (!s.p || s.photo) continue;
+      const r = await appelEspace('GET', '/photos/' + s.id, lien);
+      if (!r.ok) continue;
+      s.photo = photoDeOctets(await dechiffrer(lien.cle, new Uint8Array(await r.arrayBuffer())));
+      if (!lien.photos.includes(s.id)) lien.photos.push(s.id);
+      nouvelles++;
+    }
+    return nouvelles;
+  }
+
+  /* ---------- La synchronisation ---------- */
+  let enSync = false, aRefaire = false, minuteurSync = null;
+  function planifierSync(ms) { clearTimeout(minuteurSync); minuteurSync = setTimeout(() => synchroniser(), ms || 0); }
+  function rafraichirVue() {
+    if (document.querySelector('.jeu') || document.querySelector('.dialogue')) return;
+    const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;
+    rerendre(route);
+  }
+  function espaceFerme() {
+    S.lien = null; ecrireLocal();
+    toast('Votre espace commun est fermé. Tout ce qui est sur ce téléphone reste là.');
+    rafraichirVue();
+  }
+  async function synchroniser() {
+    const lien = S.lien; if (!lien) return false;
+    if (enSync) { aRefaire = true; return false; }
+    enSync = true;
+    try {
+      for (let essai = 0; essai < 4; essai++) {
+        const r = await appelEspace('GET', '/etat', lien);
+        if (r.status === 410 || r.status === 404) { espaceFerme(); return false; }
+        if (!r.ok) throw new Error('lecture ' + r.status);
+        const distant = await r.json();
+        const docR = distant.data ? await lireDoc(lien.cle, distant.data) : null;
+        const avant = JSON.stringify(partage(S));
+        const fusion = docR ? fusionner(lien.base || {}, partage(S), docR) : partage(S);
+        appliquer(fusion);
+        const photosRecues = await recupererPhotos(lien);
+        await envoyerPhotos(lien);
+        let version = distant.version;
+        if (!docR || !pareil(fusion, docR)) {
+          const w = await appelEspace('PUT', '/etat', lien, { base: distant.version, data: await ecrireDoc(lien.cle, fusion) });
+          if (w.status === 409) continue;   // l'autre téléphone vient d'écrire : on refusionne
+          if (w.status === 410 || w.status === 404) { espaceFerme(); return false; }
+          if (!w.ok) throw new Error('écriture ' + w.status);
+          version = (await w.json()).version;
+        }
+        if (S.lien !== lien) return false;
+        lien.base = fusion; lien.version = version; lien.derniere = new Date().toISOString(); lien.erreur = null;
+        ecrireLocal();
+        if (photosRecues || JSON.stringify(partage(S)) !== avant) rafraichirVue();
+        return true;
+      }
+      throw new Error('trop de conflits');
+    } catch (e) {
+      if (S.lien === lien) { lien.erreur = navigator.onLine === false ? 'hors-ligne' : 'serveur'; ecrireLocal(); }
+      return false;
+    } finally {
+      enSync = false;
+      if (aRefaire) { aRefaire = false; planifierSync(400); }
+    }
+  }
+  setInterval(() => { if (S.lien && !document.hidden) synchroniser(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.lien) synchroniser(); });
+  window.addEventListener('online', () => { if (S.lien) synchroniser(); });
+
+  /* ---------- Créer, montrer le QR, rejoindre, quitter ---------- */
+  const autreQue = (qui) => (qui === 'A' ? 'B' : 'A');
+  const lienRejoindre = (l) => location.origin + location.pathname + '#/rejoindre?e=' + l.id + '&k=' + l.cle;
+  function ilya(iso) {
+    const s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (s < 60) return 'à l’instant';
+    if (s < 3600) return 'il y a ' + Math.round(s / 60) + ' min';
+    if (s < 86400) return 'il y a ' + Math.round(s / 3600) + ' h';
+    return 'le ' + dateFr(iso);
+  }
+  let qrPret = null;
+  function chargerQR() {
+    if (window.qrcode) return Promise.resolve();
+    if (!qrPret) qrPret = new Promise((ok, ko) => { const s = document.createElement('script'); s.src = 'js/qrcode.js?v=1'; s.onload = ok; s.onerror = () => { qrPret = null; ko(); }; document.head.appendChild(s); });
+    return qrPret;
+  }
+
+  function blocTelephones() {
+    if (encadree()) return '';
+    if (S.lien) {
+      const etat = S.lien.erreur ? 'Pas de connexion au serveur pour l’instant : vos changements partiront plus tard.' : (S.lien.derniere ? 'Dernière synchronisation ' + ilya(S.lien.derniere) + '.' : 'Synchronisation en cours…');
+      return `<div class="profil-bloc"><h3>Vos deux téléphones</h3>
+        <p class="muted small">Reliés. Sur ce téléphone, vous êtes ${esc(nom(S.lien.moi))}. ${etat}</p>
+        <div class="actions"><button class="btn btn--secondaire btn--petit" data-act="tel-sync">Synchroniser maintenant</button><a class="btn btn--discret btn--petit" href="#/relier">Afficher le QR code</a><button class="btn btn--discret btn--petit" data-act="tel-quitter">Quitter l’espace commun</button></div></div>`;
+    }
+    return `<div class="profil-bloc"><h3>Vos deux téléphones</h3>
+      <p class="muted small">Chacun garde le sien, et vos favoris, vos souvenirs et leurs photos, votre Canari se retrouvent des deux côtés. Chiffré de bout en bout : personne ne peut lire votre espace, même pas nous.</p>
+      <div class="actions">${estMembre() ? '<a class="btn btn--petit" href="#/relier">Relier nos deux téléphones</a>' : '<a class="btn btn--secondaire btn--petit" href="#/membre">Réservé aux membres</a>'}</div>
+      <div class="champ" style="margin:16px 0 0"><label for="tel-lien">Vous avez reçu un lien ?</label><div class="cadeau__ligne" style="margin-top:0"><input type="text" id="tel-lien" placeholder="Collez-le ici" autocomplete="off" spellcheck="false" /><button class="btn btn--secondaire btn--petit" data-act="tel-rejoindre-lien">Rejoindre</button></div></div></div>`;
+  }
+
+  function vueRelier() {
+    if (!S.lien) {
+      if (!estMembre()) return aller('/membre');
+      return rendre(`<a class="retour" href="#/profil">← Profil</a>
+        <section class="hero"><div class="surtitre">Vos deux téléphones</div><h1>Sur ce téléphone, vous êtes…</h1>
+        <p>Chacun garde son téléphone. Ce que vous ajoutez d’un côté apparaît de l’autre : favoris, souvenirs, photos, Canari. Vos réponses secrètes, elles, restent sur le téléphone de celui qui les écrit.</p></section>
+        <div class="actions actions--col" style="max-width:360px"><button class="btn" data-act="tel-creer" data-qui="A">${esc(nom('A'))}</button><button class="btn btn--secondaire" data-act="tel-creer" data-qui="B">${esc(nom('B'))}</button></div>`);
+    }
+    const autre = nom(autreQue(S.lien.moi)), url = lienRejoindre(S.lien);
+    rendre(`<a class="retour" href="#/profil">← Profil</a>
+      <section class="hero"><div class="surtitre">Vos deux téléphones</div><h1>À ${esc(autre)}, maintenant.</h1>
+      <p>Sur le téléphone de ${esc(autre)}, ouvrez l’appareil photo et visez ce code. Ou envoyez-lui le lien.</p></section>
+      <div class="qr-carte" id="qr" aria-label="QR code pour rejoindre votre espace"></div>
+      <div class="actions"><button class="btn" data-act="tel-partager">Envoyer le lien</button><button class="btn btn--secondaire" data-act="tel-copier">Copier le lien</button></div>
+      <div class="profil-bloc" style="margin-top:24px"><h3>Ce lien est aussi votre code de secours</h3><p class="muted small">Gardez-le dans un endroit sûr : vos notes, ou un mail à vous-même. Il permet de retrouver votre espace sur un nouveau téléphone. Sans lui et sans vos deux téléphones, personne ne peut le retrouver, même pas nous : c’est le prix d’un espace que nous ne pouvons pas lire.</p></div>
+      <p class="note">Si l’app est installée sur l’écran d’accueil de ${esc(autre)} : ouvrir l’app, aller dans Profil, puis coller le lien dans « Vous avez reçu un lien ? ».</p>`);
+    chargerQR().then(() => {
+      const z = $('#qr'); if (!z || !window.qrcode) return;
+      const qr = window.qrcode(0, 'M'); qr.addData(url); qr.make();
+      z.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true, alt: 'QR code pour rejoindre votre espace' });
+    }).catch(() => { const z = $('#qr'); if (z) z.innerHTML = '<p class="note">Le QR code ne s’affiche pas : envoyez plutôt le lien.</p>'; });
+  }
+
+  async function creerEspace(qui) {
+    if (!estMembre()) return aller('/membre');
+    const id = b64u(aleatoire(16)), cle = b64u(aleatoire(32));
+    const r = await fetch(API_ESPACES + '/espaces', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, jeton: await jetonDe(cle) }) });
+    if (!r.ok) throw new Error('création ' + r.status);
+    S.lien = { id, cle, moi: qui === 'B' ? 'B' : 'A', version: 0, base: {}, photos: [], cree: new Date().toISOString() };
+    ecrireLocal(); mesure('Deux téléphones', 'espace créé');
+    await synchroniser();
+  }
+
+  let aRejoindre = null;
+  async function vueRejoindre(q) {
+    const id = q.e, cle = q.k;
+    try { history.replaceState(null, '', location.pathname + location.search + '#/rejoindre'); } catch (e) { /* sans historique */ }
+    if (id && cle) aRejoindre = { id, cle };
+    const cible = aRejoindre;
+    if (!cible || !RE_ESPACE.test(cible.id) || !RE_CLE.test(cible.cle)) return rendre(`<div class="onb">${marqueSvg}<h1>Ce lien est incomplet.</h1><p class="corps">Demandez à l’autre de vous le renvoyer depuis Profil, « Afficher le QR code ».</p><div class="actions"><a class="btn btn--secondaire" href="#/">Ouvrir Besoin d’Alchimie</a></div></div>`, true);
+    if (S.lien && S.lien.id === cible.id) { toast('Ce téléphone est déjà relié.'); return aller('/profil'); }
+    if (S.lien) return rendre(`<div class="onb">${marqueSvg}<h1>Ce téléphone est déjà relié à un autre espace.</h1><p class="corps">Quittez d’abord cet espace depuis Profil, puis rouvrez le lien.</p><div class="actions"><a class="btn btn--secondaire" href="#/profil">Aller dans Profil</a></div></div>`, true);
+    rendre(`<div class="onb">${marqueSvg}<h1>Un instant…</h1></div>`, true);
+    try {
+      const r = await appelEspace('GET', '/etat', cible);
+      if (r.status === 404 || r.status === 410) return rendre(`<div class="onb">${marqueSvg}<h1>Cet espace n’existe plus.</h1><p class="corps">Il a été fermé depuis l’autre téléphone. Vous pouvez en créer un nouveau depuis Profil.</p><div class="actions"><a class="btn btn--secondaire" href="#/">Ouvrir Besoin d’Alchimie</a></div></div>`, true);
+      if (!r.ok) throw new Error();
+      const distant = await r.json();
+      const doc = distant.data ? await lireDoc(cible.cle, distant.data) : null;
+      const c = (doc && doc.couple) || {};
+      cible.noms = { A: c.a || 'Le premier', B: c.b || 'Le second' };
+      const local = S.onboarded && (S.souvenirs.length + S.favoris.length + S.vecues.length + S.canari.length) > 0;
+      rendre(`<div class="onb">${marqueSvg}
+        <div class="surtitre">Vos deux téléphones</div>
+        <h1>Rejoindre l’espace de ${esc(cible.noms.A)} et ${esc(cible.noms.B)}</h1>
+        <p class="corps">Sur ce téléphone, vous êtes :</p>
+        <div class="actions actions--col" style="max-width:360px"><button class="btn" data-act="tel-moi" data-qui="A">${esc(cible.noms.A)}</button><button class="btn btn--secondaire" data-act="tel-moi" data-qui="B">${esc(cible.noms.B)}</button></div>
+        ${local ? '<p class="note">Ce que vous avez déjà sur ce téléphone rejoindra votre espace commun.</p>' : ''}
+      </div>`, true);
+    } catch (e) {
+      rendre(`<div class="onb">${marqueSvg}<h1>Impossible d’ouvrir l’espace pour l’instant.</h1><p class="corps">Vérifiez la connexion, puis rouvrez le lien.</p><div class="actions"><a class="btn btn--secondaire" href="#/">Ouvrir Besoin d’Alchimie</a></div></div>`, true);
+    }
+  }
+  async function rejoindre(qui) {
+    const cible = aRejoindre; if (!cible) return aller('/');
+    aRejoindre = null;
+    /* Les prénoms viennent de l'autre téléphone : on considère ceux d'ici comme inchangés. */
+    S.lien = { id: cible.id, cle: cible.cle, moi: qui === 'B' ? 'B' : 'A', version: 0, base: { couple: copie(S.couple) }, photos: [], rejoint: new Date().toISOString() };
+    ecrireLocal(); mesure('Deux téléphones', 'espace rejoint');
+    const ok = await synchroniser();
+    toast(ok ? 'Vos deux téléphones sont reliés.' : 'Relié. La synchronisation reprendra dès que possible.');
+    aller(S.majeurs ? '/' : '/age');
+  }
+  function quitterEspace() {
+    demander('Quitter l’espace commun ? Vous gardez tout ce qui est sur ce téléphone, et l’autre téléphone garde aussi sa copie. Ensuite, vos deux téléphones ne se parleront plus.', 'Quitter', async () => {
+      const lien = S.lien; if (!lien) return;
+      try { await appelEspace('DELETE', '', lien); } catch (e) { /* on coupe quand même ici */ }
+      S.lien = null; ecrireLocal(); mesure('Deux téléphones', 'espace quitté');
+      toast('Espace commun quitté. Tout reste sur ce téléphone.');
+      rerendre(vueProfil);
+    });
   }
 
   /* ------------------------------------------------------------ */
@@ -1018,6 +1330,7 @@
         ${testeur() ? '<p class="note">Mode test : la bascule ouvre ou ferme l’accès membre sur ce téléphone.</p>' : ''}
         ${estMembre() ? '' : '<div class="actions"><a class="btn btn--secondaire btn--petit" href="#/membre">Voir ce que change l’accès membre</a></div>'}
       </div>
+      ${blocTelephones()}
       ${blocInstaller()}
       ${blocMesure()}
       <div class="profil-bloc">
@@ -1027,7 +1340,7 @@
       </div>
       <div class="profil-bloc">
         <h3>Vos données</h3>
-        <p class="muted small">Tout ce que vous écrivez ici reste sur cet appareil.${FORMULAIRE_BREVO ? ' Seule votre adresse mail, si vous nous la donnez, part chez Brevo pour vous écrire.' : ' Rien n’est envoyé nulle part.'} Dans le produit final, un couple pourra lier deux téléphones ; ce prototype en simule un seul, qu’on se passe.</p>
+        <p class="muted small">Tout ce que vous écrivez ici reste sur cet appareil${S.lien ? ', et sur l’autre téléphone : ce que vous partagez passe chiffré par notre serveur, qui ne peut pas le lire' : ''}.${FORMULAIRE_BREVO ? ' Seule votre adresse mail, si vous nous la donnez, part chez Brevo pour vous écrire.' : ' Rien n’est envoyé nulle part.'} Dans le produit final, un couple pourra lier deux téléphones ; ce prototype en simule un seul, qu’on se passe.</p>
         <p class="muted small">Une question, une idée : <a class="lien-aide" href="mailto:contact@besoindalchimie.com">contact@besoindalchimie.com</a>${FORMULAIRE_BREVO ? ' · <a class="lien-aide" href="#/confidentialite">Confidentialité</a>' : ''}</p>
         <div class="actions"><button class="btn btn--discret" data-act="reset">Effacer le prototype et recommencer</button></div>
       </div>
@@ -1271,6 +1584,17 @@
     else if (a === 'importer') { importer(); }
     else if (a === 'cadeau-code') { const c = $('#cadeau-code'); appliquerCadeau(c ? c.value : '', false); }
     else if (a === 'cadeau-refaire') { S.inscrit = false; sauver(); rerendre(route); }
+    else if (a === 'tel-creer') { b.disabled = true; creerEspace(b.dataset.qui).then(() => vueRelier()).catch(() => { b.disabled = false; toast('Le serveur ne répond pas. Réessayez dans un instant.'); }); }
+    else if (a === 'tel-moi') { b.disabled = true; rejoindre(b.dataset.qui); }
+    else if (a === 'tel-sync') { b.disabled = true; synchroniser().then((ok) => { toast(ok ? 'Synchronisé.' : 'Pas de connexion au serveur pour l’instant.'); rerendre(vueProfil); }); }
+    else if (a === 'tel-quitter') { quitterEspace(); }
+    else if (a === 'tel-copier' || a === 'tel-partager') {
+      if (!S.lien) return;
+      const url = lienRejoindre(S.lien);
+      const copier = () => { const fin = () => toast('Lien copié'); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(fin, () => toast('Copie impossible : sélectionnez le lien à la main.')); else toast('Copie impossible sur cet appareil.'); };
+      if (a === 'tel-partager' && navigator.share) navigator.share({ title: 'Besoin d’Alchimie', text: 'Pour relier nos deux téléphones :', url }).catch(() => {}); else copier();
+    }
+    else if (a === 'tel-rejoindre-lien') { const v = ($('#tel-lien') || {}).value || ''; const m = /[?&]e=([A-Za-z0-9_-]{22})[^#]*?[?&]k=([A-Za-z0-9_-]{43})/.exec(v); if (!m) { toast('Ce lien ne ressemble pas à un lien d’espace.'); return; } aller('/rejoindre?e=' + m[1] + '&k=' + m[2]); }
     else if (a === 'rester') { try { sessionStorage.setItem('ba-rester', '1'); } catch (e) { /* stockage indisponible */ } route(); }
     else if (a === 'filtres') { const f = $('#filtres'); f.hidden = !f.hidden; }
     else if (a === 'quitter') { demander('Quitter l’expérience ? Ce qui a été écrit ne sera pas gardé.', 'Quitter', () => aller('/experience/' + id)); }
@@ -1380,4 +1704,5 @@
 
   window.addEventListener('hashchange', route);
   route();
+  if (S.lien) planifierSync(800);
 })();
